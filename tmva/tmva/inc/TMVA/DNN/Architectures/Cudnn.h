@@ -23,7 +23,7 @@
 
 #include "cudnn.h"
 #include "Cuda/CudaBuffers.h"
-#include "Cudnn/CudnnTensor.h"
+#include "Cuda/CudaTensor.h"
 #include "TMVA/DNN/TensorDataLoader.h"
 #include <utility>
 #include <vector>
@@ -50,7 +50,7 @@ private:
 public:
 
     using Scalar_t       = AFloat;
-    using Matrix_t       = TCudnnTensor<AFloat>;
+    using Matrix_t       = TCudaTensor<AFloat>;
     using DeviceBuffer_t = TCudaDeviceBuffer<AFloat>;
     using HostBuffer_t   = TCudaHostBuffer<AFloat>;
 
@@ -77,35 +77,35 @@ public:
     *  in \p df and thus produces only a valid result, if it is applied the
     *  first time after the corresponding forward propagation has been per-
     *  formed. */
-   static void Backward();
+   //static void Backward();
    
    /** Adds a the elements in matrix B scaled by c to the elements in
     *  the matrix A. This is required for the weight update in the gradient
     *  descent step.*/
-   static void ScaleAdd(TCudnnTensor<AFloat> & A,
-                        const TCudnnTensor<AFloat> & B,
-                        Scalar_t beta = 1.0);
+   //static void ScaleAdd(TCudaTensor<AFloat> & A,
+   //                     const TCudaTensor<AFloat> & B,
+   //                     Scalar_t beta = 1.0);
    /** Copy the elements of matrix A into matrix B. */
-   static void Copy(TCudnnTensor<AFloat> & B,
-                    const TCudnnTensor<AFloat> & A);
+   //static void Copy(TCudaTensor<AFloat> & B,
+   //                 const TCudaTensor<AFloat> & A);
 
    // copy from another type of matrix
-   template<typename AMatrix_t>
-   static void CopyDiffArch(TCudnnTensor<Scalar_t> & B, const AMatrix_t & A); 
+   //template<typename AMatrix_t>
+   //static void CopyDiffArch(TCudaTensor<Scalar_t> & B, const AMatrix_t & A); 
 
 
    /** Above functions extended to vectors */
-   static void ScaleAdd(std::vector<TCudnnTensor<Scalar_t>> & A,
-                        const std::vector<TCudnnTensor<Scalar_t>> & B,
+   /*static void ScaleAdd(std::vector<TCudaTensor<Scalar_t>> & A,
+                        const std::vector<TCudaTensor<Scalar_t>> & B,
                         Scalar_t beta = 1.0);
 
-   static void Copy(std::vector<TCudnnTensor<Scalar_t>> & A,
-                    const std::vector<TCudnnTensor<Scalar_t>> & B);
+   static void Copy(std::vector<TCudaTensor<Scalar_t>> & A,
+                    const std::vector<TCudaTensor<Scalar_t>> & B);*/
 
    // copy from another architecture
-   template<typename AMatrix_t>
-   static void CopyDiffArch(std::vector<TCudnnTensor<Scalar_t>> & A,
-const std::vector<AMatrix_t> & B);
+   /*template<typename AMatrix_t>
+   static void CopyDiffArch(std::vector<TCudaTensor<Scalar_t>> & A,
+const std::vector<AMatrix_t> & B);*/
 
    //____________________________________________________________________________
    //
@@ -119,33 +119,33 @@ const std::vector<AMatrix_t> & B);
     * and writes the results into the result matrix.
     */
    ///@{
-   static void Identity(TCudnnTensor<AFloat> & B);
-   static void IdentityDerivative(TCudnnTensor<AFloat> & B,
-                                  const TCudnnTensor<AFloat> & A);
+   /*static void Identity(TCudaTensor<AFloat> & B);
+   static void IdentityDerivative(TCudaTensor<AFloat> & B,
+                                  const TCudaTensor<AFloat> & A);
 
-   static void Relu(TCudnnTensor<AFloat> & B);
-   static void ReluDerivative(TCudnnTensor<AFloat> & B,
-                              const TCudnnTensor<AFloat> & A);
+   static void Relu(TCudaTensor<AFloat> & B);
+   static void ReluDerivative(TCudaTensor<AFloat> & B,
+                              const TCudaTensor<AFloat> & A);
 
-   static void Sigmoid(TCudnnTensor<AFloat> & B);
-   static void SigmoidDerivative(TCudnnTensor<AFloat> & B,
-                                 const TCudnnTensor<AFloat> & A);
+   static void Sigmoid(TCudaTensor<AFloat> & B);
+   static void SigmoidDerivative(TCudaTensor<AFloat> & B,
+                                 const TCudaTensor<AFloat> & A);
 
-   static void Tanh(TCudnnTensor<AFloat> & B);
-   static void TanhDerivative(TCudnnTensor<AFloat> & B,
-                              const TCudnnTensor<AFloat> & A);
+   static void Tanh(TCudaTensor<AFloat> & B);
+   static void TanhDerivative(TCudaTensor<AFloat> & B,
+                              const TCudaTensor<AFloat> & A);
 
-   static void SymmetricRelu(TCudnnTensor<AFloat> & B);
-   static void SymmetricReluDerivative(TCudnnTensor<AFloat> & B,
-                                       const TCudnnTensor<AFloat> & A);
+   static void SymmetricRelu(TCudaTensor<AFloat> & B);
+   static void SymmetricReluDerivative(TCudaTensor<AFloat> & B,
+                                       const TCudaTensor<AFloat> & A);
 
-   static void SoftSign(TCudnnTensor<AFloat> & B);
-   static void SoftSignDerivative(TCudnnTensor<AFloat> & B,
-                                  const TCudnnTensor<AFloat> & A);
+   static void SoftSign(TCudaTensor<AFloat> & B);
+   static void SoftSignDerivative(TCudaTensor<AFloat> & B,
+                                  const TCudaTensor<AFloat> & A);
 
-   static void Gauss(TCudnnTensor<AFloat> & B);
-   static void GaussDerivative(TCudnnTensor<AFloat> & B,
-                               const TCudnnTensor<AFloat> & A);
+   static void Gauss(TCudaTensor<AFloat> & B);
+   static void GaussDerivative(TCudaTensor<AFloat> & B,
+                               const TCudaTensor<AFloat> & A);*/
    ///@}
 
    //____________________________________________________________________________
@@ -162,25 +162,25 @@ const std::vector<AMatrix_t> & B);
     */
    ///@{
 
-   static AFloat MeanSquaredError(const TCudnnTensor<AFloat> &Y, const TCudnnTensor<AFloat> &output,
-                                  const TCudnnTensor<AFloat> &weights);
-   static void MeanSquaredErrorGradients(TCudnnTensor<AFloat> &dY, const TCudnnTensor<AFloat> &Y,
-                                         const TCudnnTensor<AFloat> &output, const TCudnnTensor<AFloat> &weights);
+   /*static AFloat MeanSquaredError(const TCudaTensor<AFloat> &Y, const TCudaTensor<AFloat> &output,
+                                  const TCudaTensor<AFloat> &weights);
+   static void MeanSquaredErrorGradients(TCudaTensor<AFloat> &dY, const TCudaTensor<AFloat> &Y,
+                                         const TCudaTensor<AFloat> &output, const TCudaTensor<AFloat> &weights);*/
 
    /** Sigmoid transformation is implicitly applied, thus \p output should
     *  hold the linear activations of the last layer in the net. */
-   static AFloat CrossEntropy(const TCudnnTensor<AFloat> &Y, const TCudnnTensor<AFloat> &output,
-                              const TCudnnTensor<AFloat> &weights);
+   /*static AFloat CrossEntropy(const TCudaTensor<AFloat> &Y, const TCudaTensor<AFloat> &output,
+                              const TCudaTensor<AFloat> &weights);
 
-   static void CrossEntropyGradients(TCudnnTensor<AFloat> &dY, const TCudnnTensor<AFloat> &Y,
-                                     const TCudnnTensor<AFloat> &output, const TCudnnTensor<AFloat> &weights);
+   static void CrossEntropyGradients(TCudaTensor<AFloat> &dY, const TCudaTensor<AFloat> &Y,
+                                     const TCudaTensor<AFloat> &output, const TCudaTensor<AFloat> &weights);*/
 
    /** Softmax transformation is implicitly applied, thus \p output should
     *  hold the linear activations of the last layer in the net. */
-   static AFloat SoftmaxCrossEntropy(const TCudnnTensor<AFloat> &Y, const TCudnnTensor<AFloat> &output,
-                                     const TCudnnTensor<AFloat> &weights);
-   static void SoftmaxCrossEntropyGradients(TCudnnTensor<AFloat> &dY, const TCudnnTensor<AFloat> &Y,
-                                            const TCudnnTensor<AFloat> &output, const TCudnnTensor<AFloat> &weights);
+   /*static AFloat SoftmaxCrossEntropy(const TCudaTensor<AFloat> &Y, const TCudaTensor<AFloat> &output,
+                                     const TCudaTensor<AFloat> &weights);
+   static void SoftmaxCrossEntropyGradients(TCudaTensor<AFloat> &dY, const TCudaTensor<AFloat> &Y,
+                                            const TCudaTensor<AFloat> &output, const TCudaTensor<AFloat> &weights);*/
    ///@}
 
    //____________________________________________________________________________
@@ -196,10 +196,10 @@ const std::vector<AMatrix_t> & B);
     * classification.
     */
    ///@{
-   static void Sigmoid(TCudnnTensor<AFloat> &YHat,
-                       const TCudnnTensor<AFloat> & );
-   static void Softmax(TCudnnTensor<AFloat> &YHat,
-                       const TCudnnTensor<AFloat> & );
+   /*static void Sigmoid(TCudaTensor<AFloat> &YHat,
+                       const TCudaTensor<AFloat> & );
+   static void Softmax(TCudaTensor<AFloat> &YHat,
+                       const TCudaTensor<AFloat> & );*/
    ///@}
 
    //____________________________________________________________________________
@@ -216,15 +216,15 @@ const std::vector<AMatrix_t> & B);
     */
    ///@{
 
-   static AFloat L1Regularization(const TCudnnTensor<AFloat> & W);
-   static void AddL1RegularizationGradients(TCudnnTensor<AFloat> & A,
-                                            const TCudnnTensor<AFloat> & W,
+   /*static AFloat L1Regularization(const TCudaTensor<AFloat> & W);
+   static void AddL1RegularizationGradients(TCudaTensor<AFloat> & A,
+                                            const TCudaTensor<AFloat> & W,
                                             AFloat weightDecay);
 
-   static AFloat L2Regularization(const TCudnnTensor<AFloat> & W);
-   static void AddL2RegularizationGradients(TCudnnTensor<AFloat> & A,
-                                            const TCudnnTensor<AFloat> & W,
-                                            AFloat weightDecay);
+   static AFloat L2Regularization(const TCudaTensor<AFloat> & W);
+   static void AddL2RegularizationGradients(TCudaTensor<AFloat> & A,
+                                            const TCudaTensor<AFloat> & W,
+                                            AFloat weightDecay);*/
    ///@}
 
    //____________________________________________________________________________
@@ -239,18 +239,18 @@ const std::vector<AMatrix_t> & B);
     */
    ///@{
 
-   static void InitializeGauss(TCudnnTensor<AFloat> & A);
-   static void InitializeUniform(TCudnnTensor<AFloat> & A);
-   static void InitializeIdentity(TCudnnTensor<AFloat> & A);
-   static void InitializeZero(TCudnnTensor<AFloat> & A);
-   static void InitializeGlorotUniform(TCudnnTensor<AFloat> & A);
-   static void InitializeGlorotNormal(TCudnnTensor<AFloat> & A);
+   /*static void InitializeGauss(TCudaTensor<AFloat> & A);
+   static void InitializeUniform(TCudaTensor<AFloat> & A);
+   static void InitializeIdentity(TCudaTensor<AFloat> & A);
+   static void InitializeZero(TCudaTensor<AFloat> & A);
+   static void InitializeGlorotUniform(TCudaTensor<AFloat> & A);
+   static void InitializeGlorotNormal(TCudaTensor<AFloat> & A);
    // return static instance of random generator used for initialization
    // if generator does not exist it is created the first time with a random seed (e.g. seed = 0)
    static TRandom & GetRandomGenerator(); 
    // set random seed for the static geenrator
    // if the static geneerator does not exists it is created
-   static void SetRandomSeed(size_t seed); 
+   static void SetRandomSeed(size_t seed); */
 
 
    ///@}
@@ -266,7 +266,7 @@ const std::vector<AMatrix_t> & B);
 
    /** Apply dropout with activation probability \p p to the given
     *  matrix \p A and scale the result by reciprocal of \p p. */
-   static void Dropout(TCudnnTensor<AFloat> & A, AFloat p);
+   //static void Dropout(TCudaTensor<AFloat> & A, AFloat p);
 
    ///@}
 
@@ -280,36 +280,36 @@ const std::vector<AMatrix_t> & B);
    ///@{
 
    /** Attaches a cuda stream to each matrix in order to accomodate parallel kernel launches. */
-   static void PrepareInternals(std::vector<TCudnnTensor<AFloat>> & inputPrime);
+   //static void PrepareInternals(std::vector<TCudaTensor<AFloat>> & inputPrime);
 
    /** Calculate how many neurons "fit" in the output layer, given the input as well as the layer's hyperparameters. */
-   static size_t calculateDimension(size_t imgDim, size_t fltDim, size_t padding, size_t stride);
+   //static size_t calculateDimension(size_t imgDim, size_t fltDim, size_t padding, size_t stride);
 
    /** Add the biases in the Convolutional Layer.  */
-   static void AddConvBiases(TCudnnTensor<AFloat> &output, const TCudnnTensor<AFloat> &biases);
+   //static void AddConvBiases(TCudaTensor<AFloat> &output, const TCudaTensor<AFloat> &biases);
 
    ///@}
    /** Forward propagation in the Convolutional layer */
-   static void ConvLayerForward();
+   //static void ConvLayerForward();
 
    /** @name Backward Propagation in Convolutional Layer
     */
    ///@{
 
    /** Perform the complete backward propagation step in a Convolutional Layer. */
-   static void ConvLayerBackward();
+   //static void ConvLayerBackward();
 
    /** Utility function for calculating the activation gradients of the layer
     *  before the convolutional layer. */
-   static void CalculateConvActivationGradients();
+   //static void CalculateConvActivationGradients();
 
    /** Utility function for calculating the weight gradients of the convolutional
     * layer. */
-   static void CalculateConvWeightGradients();
+   //static void CalculateConvWeightGradients();
 
    /** Utility function for calculating the bias gradients of the convolutional
     *  layer */
-   static void CalculateConvBiasGradients();
+   //static void CalculateConvBiasGradients();
 
    ///@}
 
@@ -324,9 +324,9 @@ const std::vector<AMatrix_t> & B);
    /** Downsample the matrix \p C to the matrix \p A, using max
     *  operation, such that the winning indices are stored in matrix
     *  \p B. */
-   static void Downsample(TCudnnTensor<AFloat> &A, TCudnnTensor<AFloat> &B, const TCudnnTensor<AFloat> &C,
+   /*static void Downsample(TCudaTensor<AFloat> &A, TCudaTensor<AFloat> &B, const TCudaTensor<AFloat> &C,
                           size_t imgHeight, size_t imgWidth, size_t fltHeight, size_t fltWidth,
-                          size_t strideRows, size_t strideCols);
+                          size_t strideRows, size_t strideCols);*/
    ///@}
 
    /** @name Backward Propagation in Max Pooling Layer
@@ -336,7 +336,7 @@ const std::vector<AMatrix_t> & B);
    /** Perform the complete backward propagation step in a Pooling Layer. Based on the
     *  winning idices stored in the index matrix, it just forwards the actiovation
     *  gradients to the previous layer. */
-   static void MaxPoolLayerBackward();
+   //static void MaxPoolLayerBackward();
 
    ///@}
 
@@ -349,18 +349,18 @@ const std::vector<AMatrix_t> & B);
    ///@{
 
    /** Transform the matrix \p B to a matrix with different dimensions \p A */
-   static void Reshape(TCudnnTensor<AFloat> &A, const TCudnnTensor<AFloat> &B);
+   //static void Reshape(TCudaTensor<AFloat> &A, const TCudaTensor<AFloat> &B);
 
    /** Flattens the tensor \p B, such that each matrix, is stretched in
     *  one row, resulting with a matrix \p A. */
-   static void Flatten(TCudnnTensor<AFloat> &A, const std::vector<TCudnnTensor<AFloat>> &B, size_t size, size_t nRows,
-                       size_t nCols);
+   /*static void Flatten(TCudaTensor<AFloat> &A, const std::vector<TCudaTensor<AFloat>> &B, size_t size, size_t nRows,
+                       size_t nCols);*/
 
    /** Transforms each row of \p B to a matrix and stores it in the tensor \p B. */
-   static void Deflatten(std::vector<TCudnnTensor<AFloat>> &A, const TCudnnTensor<AFloat> &B, size_t index, size_t nRows,
-                         size_t nCols);
+   /*static void Deflatten(std::vector<TCudaTensor<AFloat>> &A, const TCudaTensor<AFloat> &B, size_t index, size_t nRows,
+                         size_t nCols);*/
    /** Rearrage data accoring to time fill B x T x D out with T x B x D matrix in*/
-   static void Rearrange(std::vector<TCudnnTensor<AFloat>> &out, const std::vector<TCudnnTensor<AFloat>> &in); 
+   //static void Rearrange(std::vector<TCudaTensor<AFloat>> &out, const std::vector<TCudaTensor<AFloat>> &in); 
 
    ///@}
 
@@ -372,7 +372,7 @@ const std::vector<AMatrix_t> & B);
 };
 
 //____________________________________________________________________________
-template <typename AFloat>
+/*template <typename AFloat>
 template <typename AMatrix_t>
 void TCuda<AFloat>::CopyDiffArch(TCudaMatrix<AFloat> &B,
                         const AMatrix_t &A)
@@ -392,7 +392,7 @@ void TCuda<AFloat>::CopyDiffArch(std::vector<TCudaMatrix<AFloat>> &B,
    for (size_t i = 0; i < B.size(); ++i) {
       CopyDiffArch(B[i], A[i]);
    }
-}
+}*/
 
 } // namespace DNN
 } // namespace TMVA
