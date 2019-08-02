@@ -301,7 +301,7 @@ void TTensorDataLoader<TensorInput, TCpu<Real_t>>::CopyTensorInput(TCpuBuffer<Re
 {
    const std::vector<TMatrixT<Double_t>> &inputTensor = std::get<0>(fData);
 
-   if (fBatchDepth == 1) {
+   if (fInputShape[0] == 1) {
       for (size_t i = 0; i < fBatchHeight; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchWidth; j++) {
@@ -311,7 +311,7 @@ void TTensorDataLoader<TensorInput, TCpu<Real_t>>::CopyTensorInput(TCpuBuffer<Re
          sampleIterator++;
       }
    } else {
-      for (size_t i = 0; i < fBatchDepth; i++) {
+      for (size_t i = 0; i < fInputShape[0]; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchHeight; j++) {
             for (size_t k = 0; k < fBatchWidth; k++) {
@@ -363,7 +363,7 @@ void TTensorDataLoader<TensorInput, TCpu<Double_t>>::CopyTensorInput(TCpuBuffer<
 {
    const std::vector<TMatrixT<Double_t>> &inputTensor = std::get<0>(fData);
 
-   if (fBatchDepth == 1) {
+   if (fInputShape[0] == 1) {
       for (size_t i = 0; i < fBatchHeight; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchWidth; j++) {
@@ -373,7 +373,7 @@ void TTensorDataLoader<TensorInput, TCpu<Double_t>>::CopyTensorInput(TCpuBuffer<
          sampleIterator++;
       }
    } else {
-      for (size_t i = 0; i < fBatchDepth; i++) {
+      for (size_t i = 0; i < fInputShape[0]; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchHeight; j++) {
             for (size_t k = 0; k < fBatchWidth; k++) {
@@ -426,7 +426,7 @@ void TTensorDataLoader<TMVAInput_t, TCpu<Double_t>>::CopyTensorInput(TCpuBuffer<
 {
    // one event, one  example in the batch
 
-   if (fBatchDepth == 1 && fBatchHeight == fBatchSize) {
+   if (fInputShape[0] == 1 && fBatchHeight == fBatchSize) {
       for (size_t i = 0; i < fBatchHeight; i++) {
          size_t sampleIndex = *sampleIterator;
          Event * event = std::get<0>(fData)[sampleIndex];
@@ -436,9 +436,9 @@ void TTensorDataLoader<TMVAInput_t, TCpu<Double_t>>::CopyTensorInput(TCpuBuffer<
          }
          sampleIterator++;
       }
-   } else if (fBatchDepth == fBatchSize) {
+   } else if (fInputShape[0] == fBatchSize) {
       // batchDepth is batch size 
-      for (size_t i = 0; i < fBatchDepth; i++) {
+      for (size_t i = 0; i < fInputShape[0]; i++) {
          size_t sampleIndex = *sampleIterator;
          Event * event = std::get<0>(fData)[sampleIndex];
          for (size_t j = 0; j < fBatchHeight; j++) {
@@ -512,7 +512,7 @@ void TTensorDataLoader<TMVAInput_t, TCpu<Real_t>>::CopyTensorInput(TCpuBuffer<Re
 {
    // one event, one  example in the batch
 
-   if (fBatchDepth == 1 && fBatchHeight == fBatchSize) {
+   if (fInputShape[0] == 1 && fBatchHeight == fBatchSize) {
       for (size_t i = 0; i < fBatchHeight; i++) {
          size_t sampleIndex = *sampleIterator;
          Event * event = std::get<0>(fData)[sampleIndex];
@@ -522,9 +522,9 @@ void TTensorDataLoader<TMVAInput_t, TCpu<Real_t>>::CopyTensorInput(TCpuBuffer<Re
          }
          sampleIterator++;
       }
-   } else if (fBatchDepth == fBatchSize) {
+   } else if (fInputShape[0] == fBatchSize) {
       // batchDepth is batch size 
-      for (size_t i = 0; i < fBatchDepth; i++) {
+      for (size_t i = 0; i < fInputShape[0]; i++) {
          size_t sampleIndex = *sampleIterator;
          Event * event = std::get<0>(fData)[sampleIndex];
          for (size_t j = 0; j < fBatchHeight; j++) {

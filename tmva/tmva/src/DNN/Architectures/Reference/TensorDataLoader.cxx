@@ -42,7 +42,7 @@ void TTensorDataLoader<TensorInput, TReference<Real_t>>::CopyTensorInput(std::ve
 {
    const std::vector<TMatrixT<Double_t>> &linputTensor = std::get<0>(fData);
 
-   if (fBatchDepth == 1) {
+   if (fInputShape[0] == 1) {
       for (size_t i = 0; i < fBatchHeight; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchWidth; j++) {
@@ -51,7 +51,7 @@ void TTensorDataLoader<TensorInput, TReference<Real_t>>::CopyTensorInput(std::ve
          sampleIterator++;
       }
    } else {
-      for (size_t i = 0; i < fBatchDepth; i++) {
+      for (size_t i = 0; i < fInputShape[0]; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchHeight; j++) {
             for (size_t k = 0; k < fBatchWidth; k++) {
@@ -102,7 +102,7 @@ void TTensorDataLoader<TensorInput, TReference<Double_t>>::CopyTensorInput(std::
 {
    const std::vector<TMatrixT<Double_t>> &linputTensor = std::get<0>(fData);
 
-   if (fBatchDepth == 1) {
+   if (fInputShape[0] == 1) {
       for (size_t i = 0; i < fBatchHeight; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchWidth; j++) {
@@ -111,7 +111,7 @@ void TTensorDataLoader<TensorInput, TReference<Double_t>>::CopyTensorInput(std::
          sampleIterator++;
       }
    } else {
-      for (size_t i = 0; i < fBatchDepth; i++) {
+      for (size_t i = 0; i < fInputShape[0]; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchHeight; j++) {
             for (size_t k = 0; k < fBatchWidth; k++) {
@@ -163,7 +163,7 @@ void TTensorDataLoader<TMVAInput_t, TReference<Real_t>>::CopyTensorInput(std::ve
    // one event, one  example in the batch
    Event *event = std::get<0>(fData)[0];
 
-   if (fBatchDepth == 1) {
+   if (fInputShape[0] == 1) {
       for (size_t i = 0; i < fBatchHeight; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchWidth; j++) {
@@ -173,7 +173,7 @@ void TTensorDataLoader<TMVAInput_t, TReference<Real_t>>::CopyTensorInput(std::ve
          sampleIterator++;
       }
    } else {
-      for (size_t i = 0; i < fBatchDepth; i++) {
+      for (size_t i = 0; i < fInputShape[0]; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchHeight; j++) {
             for (size_t k = 0; k < fBatchWidth; k++) {
@@ -235,7 +235,7 @@ void TTensorDataLoader<TMVAInput_t, TReference<Double_t>>::CopyTensorInput(std::
    // one event, one  example in the batch
    Event *event = std::get<0>(fData)[0];
 
-   if (fBatchDepth == 1) {
+   if (fInputShape[0] == 1) {
       for (size_t i = 0; i < fBatchHeight; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchWidth; j++) {
@@ -245,7 +245,7 @@ void TTensorDataLoader<TMVAInput_t, TReference<Double_t>>::CopyTensorInput(std::
          sampleIterator++;
       }
    } else {
-      for (size_t i = 0; i < fBatchDepth; i++) {
+      for (size_t i = 0; i < fInputShape[0]; i++) {
          size_t sampleIndex = *sampleIterator;
          for (size_t j = 0; j < fBatchHeight; j++) {
             for (size_t k = 0; k < fBatchWidth; k++) {
