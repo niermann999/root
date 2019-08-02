@@ -42,7 +42,7 @@ namespace DNN
  * matrix and buffer types for this architecture, as well as the remaining 
  * functions in the low-level interface in the form of static members.
  */
-template<typename AFloat = cudnnDataType_t>
+template<typename AFloat>
 class TCudnn
 {
 private:

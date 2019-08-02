@@ -438,6 +438,7 @@ if(tmva-gpu)
   )
   target_include_directories(TMVA PRIVATE ${CUDA_INCLUDE_DIRS})
   target_link_libraries(TMVA PRIVATE ${CUDA_CUBLAS_LIBRARIES})
+  target_link_libraries(TMVA PRIVATE ${CUDA_CUBLAS_LIBRARIES} /usr/local/cuda/lib64/libcudnn.so)
 endif()
 
 ROOT_ADD_TEST_SUBDIRECTORY(test)

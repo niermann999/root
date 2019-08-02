@@ -49,6 +49,7 @@
 
 #ifdef R__HAS_TMVAGPU
 #include "TMVA/DNN/Architectures/Cuda.h"
+#include "TMVA/DNN/Architectures/Cudnn.h"
 #endif
 
 #include "TMVA/DNN/Functions.h"
@@ -158,12 +159,9 @@ private:
    /// parce the validation string and return the number of event data used for validation 
    UInt_t GetNumValidationSamples();
 
-   
-   size_t fInputDepth;  ///< The depth of the input.
-   size_t fInputHeight; ///< The height of the input.
-   size_t fInputWidth;  ///< The width of the input.
+   // cudnn implementation needs this format
+   std::vector<size_t> fInputShape;   ///< Contains the batch depth (actually size), input depth and furhter input dimensios of the data
 
-   size_t fBatchDepth;  ///< The depth of the batch used to train the deep net.
    size_t fBatchHeight; ///< The height of the batch used to train the deep net.
    size_t fBatchWidth;  ///< The width of the batch used to train the deep net.
    
@@ -235,11 +233,14 @@ public:
    const Ranking *CreateRanking();
 
    /* Getters */
-   size_t GetInputDepth() const { return fInputDepth; }
-   size_t GetInputHeight() const { return fInputHeight; }
-   size_t GetInputWidth() const { return fInputWidth; }
+   size_t GetInputDepth() const { return fInputShape[1]; }   //< no. of channels for an image
+   size_t GetInputHeight() const { return fInputShape[2]; }
+   size_t GetInputWidth() const { return fInputShape[3]; }
+   size_t GetInputDim() const { return fInputShape.size() - 2; }
+   std::vector<size_t> GetInputShape() const { return fInputShape; }
 
-   size_t GetBatchDepth() const { return fBatchDepth; }
+   //size_t GetBatchDepth() const { return fBatchDepth; }
+   size_t GetBatchDepth() const { return fInputShape[0]; }
    size_t GetBatchHeight() const { return fBatchHeight; }
    size_t GetBatchWidth() const { return fBatchWidth; }
 
@@ -263,11 +264,12 @@ public:
    KeyValueVector_t &GetKeyValueSettings() { return fSettings; }
 
    /** Setters */
-   void SetInputDepth(size_t inputDepth) { fInputDepth = inputDepth; }
-   void SetInputHeight(size_t inputHeight) { fInputHeight = inputHeight; }
-   void SetInputWidth(size_t inputWidth) { fInputWidth = inputWidth; }
+   void SetInputDepth(int inputDepth) { fInputShape[1] = inputDepth; }
+   void SetInputHeight(int inputHeight) { fInputShape[2] = inputHeight; }
+   void SetInputWidth(int inputWidth) { fInputShape[3] = inputWidth; }
+   void SetInputShape(std::vector<size_t> inputShape) { fInputShape = std::move(inputShape); }
 
-   void SetBatchDepth(size_t batchDepth) { fBatchDepth = batchDepth; }
+   void SetBatchDepth(size_t batchDepth) { fInputShape[0] = batchDepth; }
    void SetBatchHeight(size_t batchHeight) { fBatchHeight = batchHeight; }
    void SetBatchWidth(size_t batchWidth) { fBatchWidth = batchWidth; }
 

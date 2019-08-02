@@ -135,16 +135,21 @@ private:
    using Matrix_t = typename Architecture_t::Matrix_t;
    using Tensor_t = typename Architecture_t::Tensor_t;
    using BatchIterator_t = TTensorBatchIterator<Data_t, Architecture_t>;
+   
+   using DeviceBufferTuple = 
+      std::tuple<typename Architecture_t::DeviceBuffer_t, typename Architecture_t::DeviceBuffer_t, typename Architecture_t::DeviceBuffer_t>;
 
    const Data_t &fData; ///< The data that should be loaded in the batches.
-
+   
    size_t fNSamples;        ///< The total number of samples in the dataset.
    size_t fBatchSize;       ///< The size of a batch.
-   size_t fBatchDepth;      ///< The number of matrices in the tensor.
+   //size_t fBatchDepth;      ///< The number of matrices in the tensor.
    size_t fBatchHeight;     ///< The number od rows in each matrix.
    size_t fBatchWidth;      ///< The number of columns in each matrix.
    size_t fNOutputFeatures; ///< The number of outputs from the classifier/regressor.
    size_t fBatchIndex;      ///< The index of the batch when there are multiple batches in parallel
+   
+   std::vector<size_t> fInputShape;     ///< Defines the batchDepth (no. of matrices in the tensor), no. of channels and dimensions of an input tensor
 
    size_t fNStreams;                           ///< Number of buffer pairs.
    std::vector<DeviceBuffer_t> fDeviceBuffers; ///< The device buffers used to keep the input, output and weight data.
@@ -154,14 +159,19 @@ private:
 
 public:
    /*! Constructor. */
-   TTensorDataLoader(const Data_t &data, size_t nSamples, size_t batchSize, size_t batchDepth, size_t batchHeight,
-                     size_t batchWidth, size_t nOutputFeatures, size_t nStreams = 1);
+   TTensorDataLoader(const Data_t &data, size_t nSamples, size_t batchSize, size_t batchHeight, 
+                     size_t batchWidth, size_t nOutputFeatures, std::vector<size_t> inputShape,
+                     size_t nStreams = 1);
+   TTensorDataLoader(const Data_t &data, size_t nSamples, std::vector<int> inputShape, size_t nStreams = 1);
 
    TTensorDataLoader(const TTensorDataLoader &) = default;
    TTensorDataLoader(TTensorDataLoader &&) = default;
    TTensorDataLoader &operator=(const TTensorDataLoader &) = default;
    TTensorDataLoader &operator=(TTensorDataLoader &&) = default;
 
+   /** Getter for the total dimension of the tensor */
+   int GetTensorDim () {return fInputShape.size() - 1;}
+   
    /** Copy input tensor into the given host buffer. Function to be specialized by
     *  the architecture-specific backend. */
    void CopyTensorInput(HostBuffer_t &buffer, IndexIterator_t begin);
@@ -171,7 +181,10 @@ public:
    /** Copy weight matrix into the given host buffer. Function to be specialized
     * by the architecture-spcific backend. */
    void CopyTensorWeights(HostBuffer_t &buffer, IndexIterator_t begin);
-
+   /** Orders the input into batches and handels the copying onto the device using 
+    *  multiple input streams in Round Robin fashion. */
+   inline DeviceBufferTuple CopyTensorBatches();
+   
    BatchIterator_t begin() { return TTensorBatchIterator<Data_t, Architecture_t>(*this); }
    BatchIterator_t end() { return TTensorBatchIterator<Data_t, Architecture_t>(*this, fNSamples / fBatchSize); }
 
@@ -202,17 +215,17 @@ TTensorBatch<Architecture_t>::TTensorBatch(Tensor_t &inputTensor, Matrix_t &outp
 // TTensorDataLoader Class.
 //______________________________________________________________________________
 template <typename Data_t, typename Architecture_t>
-TTensorDataLoader<Data_t, Architecture_t>::TTensorDataLoader(const Data_t &data, size_t nSamples, size_t batchSize,
-                                                             size_t batchDepth, size_t batchHeight, size_t batchWidth,
-                                                             size_t nOutputFeatures, size_t nStreams)
-   : fData(data), fNSamples(nSamples), fBatchSize(batchSize), fBatchDepth(batchDepth), fBatchHeight(batchHeight),
-     fBatchWidth(batchWidth), fNOutputFeatures(nOutputFeatures), fBatchIndex(0), fNStreams(nStreams), fDeviceBuffers(),
-     fHostBuffers(), fSampleIndices()
+TTensorDataLoader<Data_t, Architecture_t>::TTensorDataLoader(const Data_t &data, size_t nSamples, size_t batchSize,  
+                                                             size_t batchHeight, size_t batchWidth, size_t nOutputFeatures, 
+                                                             std::vector<size_t> inputShape, size_t nStreams)
+   : fData(data), fNSamples(nSamples), fBatchSize(batchSize), fBatchHeight(batchHeight),
+     fBatchWidth(batchWidth), fNOutputFeatures(nOutputFeatures), fBatchIndex(0),  fInputShape(std::move(inputShape)),
+     fNStreams(nStreams), fDeviceBuffers(), fHostBuffers(), fSampleIndices()
 {
-   size_t inputTensorSize = fBatchDepth * fBatchHeight * fBatchWidth;
+   size_t inputTensorSize = fInputShape[0] * fBatchHeight * fBatchWidth;
    size_t outputMatrixSize = fBatchSize * fNOutputFeatures;
    size_t weightMatrixSize = fBatchSize;
-
+   std::cout  << fInputShape[0] << fBatchSize << fBatchHeight << std::endl;
    for (size_t i = 0; i < fNStreams; i++) {
       fHostBuffers.push_back(HostBuffer_t(inputTensorSize + outputMatrixSize + weightMatrixSize));
       fDeviceBuffers.push_back(DeviceBuffer_t(inputTensorSize + outputMatrixSize + weightMatrixSize));
@@ -226,11 +239,11 @@ TTensorDataLoader<Data_t, Architecture_t>::TTensorDataLoader(const Data_t &data,
 
 //______________________________________________________________________________
 template <typename Data_t, typename Architecture_t>
-TTensorBatch<Architecture_t> TTensorDataLoader<Data_t, Architecture_t>::GetTensorBatch()
+std::tuple<typename Architecture_t::DeviceBuffer_t, typename Architecture_t::DeviceBuffer_t, typename Architecture_t::DeviceBuffer_t> TTensorDataLoader<Data_t, Architecture_t>::CopyTensorBatches()
 {
    fBatchIndex %= (fNSamples / fBatchSize); // Cycle through samples.
 
-   size_t inputTensorSize = fBatchDepth * fBatchHeight * fBatchWidth;
+   size_t inputTensorSize = fInputShape[0] * fBatchHeight * fBatchWidth;
    size_t outputMatrixSize = fBatchSize * fNOutputFeatures;
    size_t weightMatrixSize = fBatchSize;
 
@@ -241,12 +254,12 @@ TTensorBatch<Architecture_t> TTensorDataLoader<Data_t, Architecture_t>::GetTenso
    HostBuffer_t inputHostBuffer = hostBuffer.GetSubBuffer(0, inputTensorSize);
    HostBuffer_t outputHostBuffer = hostBuffer.GetSubBuffer(inputTensorSize, outputMatrixSize);
    HostBuffer_t weightHostBuffer = hostBuffer.GetSubBuffer(inputTensorSize + outputMatrixSize, weightMatrixSize);
-
+   
    DeviceBuffer_t inputDeviceBuffer = deviceBuffer.GetSubBuffer(0, inputTensorSize);
    DeviceBuffer_t outputDeviceBuffer = deviceBuffer.GetSubBuffer(inputTensorSize, outputMatrixSize);
    DeviceBuffer_t weightDeviceBuffer = deviceBuffer.GetSubBuffer(inputTensorSize + outputMatrixSize, weightMatrixSize);
 
-   // here sample index has batch size as offset , while in
+   // here sample index has batch size as offset, while in
    // copy tensor input has batch depth.
    // We support then now two cases: batchdepth = 1  batchHeight = batch size
    //   or batch depth = batch size 
@@ -258,21 +271,37 @@ TTensorBatch<Architecture_t> TTensorDataLoader<Data_t, Architecture_t>::GetTenso
    CopyTensorWeights(weightHostBuffer, sampleIndexIterator);
 
    deviceBuffer.CopyFrom(hostBuffer);
+   
+   return std::make_tuple(inputDeviceBuffer, outputDeviceBuffer, weightDeviceBuffer);
+}
+
+//______________________________________________________________________________
+template <typename Data_t, typename Architecture_t>
+TTensorBatch<Architecture_t> TTensorDataLoader<Data_t, Architecture_t>::GetTensorBatch()
+{
+   // After copying the data to the device, wrap the device buffer in the respective 
+   // architectures matrix type
+   DeviceBufferTuple DeviceBuffers = CopyTensorBatches();
 
    // now we build tensors with columnmajor layout . Note Batch depth is the major shape (last of the shape)
-   Tensor_t inputTensor (inputDeviceBuffer, { fBatchHeight, fBatchWidth, fBatchDepth } );  
-   // size_t jump = fBatchHeight * fBatchWidth;
-   // for (size_t i = 0; i < fBatchDepth; i++) {
-   //    DeviceBuffer_t subInputDeviceBuffer = inputDeviceBuffer.GetSubBuffer(i * jump, jump);
-   //    inputTensor.emplace_back(subInputDeviceBuffer, fBatchHeight, fBatchWidth);
-   // }
-   Matrix_t outputMatrix(outputDeviceBuffer, fBatchSize, fNOutputFeatures);
-   Matrix_t weightMatrix(weightDeviceBuffer, fBatchSize, fNOutputFeatures);
+
+   //--? fBatchDepth or fINputShape[0] ????
+   Tensor_t inputTensor (std::get<0>(DeviceBuffers), { fBatchHeight, fBatchWidth, fInputShape[0] } );
+
+//   std::vector<Matrix_t> inputTensor;
+//   size_t jump = fBatchHeight * fBatchWidth;
+//   for (size_t i = 0; i < fInputShape[0]; i++) {
+//      DeviceBuffer_t subInputDeviceBuffer = std::get<0>(DeviceBuffers).GetSubBuffer(i * jump, jump);
+//      inputTensor.emplace_back(subInputDeviceBuffer, fBatchHeight, fBatchWidth);
+//   }
+   Matrix_t outputMatrix(std::get<1>(DeviceBuffers), fBatchSize, fNOutputFeatures);
+   Matrix_t weightMatrix(std::get<2>(DeviceBuffers), fBatchSize, fNOutputFeatures);
+
 
    fBatchIndex++;
    return TTensorBatch<Architecture_t>(inputTensor, outputMatrix, weightMatrix);
 }
-
+   
 //______________________________________________________________________________
 template <typename Data_t, typename Architecture_t>
 template <typename RNG>

@@ -189,6 +189,7 @@ void MethodDL::DeclareOptions()
    AddPreDefVal(TString("CPU"));
    AddPreDefVal(TString("GPU"));
    AddPreDefVal(TString("OPENCL"));
+   AddPreDefVal(TString("CUDNN"));
 
    // define training stratgey separated by a separator "|"
    DeclareOptionRef(fTrainingStrategyString = "LearningRate=1e-1,"
@@ -251,13 +252,30 @@ void MethodDL::ProcessOptions()
             << Endl;
 #ifdef R__HAS_TMVACPU
       fArchitectureString = "CPU";
-      Log() << kINFO << "Will use now the CPU architecture !" << Endl;
+      Log() << kINFO << "Will now use the CPU architecture !" << Endl;
 #else 
       fArchitectureString = "Standard";
-      Log() << kINFO << "Will use now the Standard architecture !" << Endl;
+      Log() << kINFO << "Will now use the Standard architecture !" << Endl;
 #endif
 #else
-      Log() << kINFO << "Will use now the GPU architecture !" << Endl;
+      Log() << kINFO << "Will now use the GPU architecture !" << Endl;
+#endif
+   }
+  else if (fArchitectureString == "CUDNN") {
+#ifndef R__HAS_TMVAGPU    // case TMVA does not support GPU
+      Log() << kERROR << "CUDA backend not enabled. Please make sure "
+         "you have CUDNN and CUDA installed and it was successfully "
+         "detected by CMAKE by using -Dcuda=On"
+            << Endl;
+#ifdef R__HAS_TMVACPU
+      fArchitectureString = "CPU";
+      Log() << kINFO << "Will now use the CPU architecture !" << Endl;
+#else 
+      fArchitectureString = "Standard";
+      Log() << kINFO << "Will now use the Standard architecture !" << Endl;
+#endif
+#else
+      Log() << kINFO << "Will now use the GPU architecture !" << Endl;
 #endif
    }
 
@@ -269,13 +287,13 @@ void MethodDL::ProcessOptions()
             << Endl;
 #ifdef R__HAS_TMVAGPU
       fArchitectureString = "GPU";
-      Log() << kINFO << "Will use now the GPU architecture !" << Endl;
+      Log() << kINFO << "Will now use the GPU architecture !" << Endl;
 #else 
       fArchitectureString = "STANDARD";
-      Log() << kINFO << "Will use now the Standard architecture !" << Endl;
+      Log() << kINFO << "Will now use the Standard architecture !" << Endl;
 #endif
 #else
-      Log() << kINFO << "Will use now the CPU architecture !" << Endl;
+      Log() << kINFO << "Will now use the CPU architecture !" << Endl;
 #endif
    }
 
@@ -393,22 +411,26 @@ void MethodDL::ProcessOptions()
 
    // case inputlayout and batch layout was not given. Use default then
    // (1, batchsize, nvariables)
-   if (fInputWidth == 0 && fInputHeight == 0 && fInputDepth == 0) {
-      fInputDepth = 1;
-      fInputHeight = 1;
-      fInputWidth = GetNVariables();
+   // fInputShape[0] -> BatchDepth
+   // fInputShape[1] -> InputDepth
+   // fInputShape[2] -> InputHeight
+   // fInputShape[3] -> InputWidth
+   if (fInputShape[3] == 0 && fInputShape[2] == 0 && fInputShape[1] == 0) {
+      fInputShape[1] = 1;
+      fInputShape[2] = 1;
+      fInputShape[3] = GetNVariables();
    }
-   if (fBatchWidth == 0 && fBatchHeight == 0 && fBatchDepth == 0) {
-      if (fInputHeight == 1 && fInputDepth == 1) {
+   if (fBatchWidth == 0 && fBatchHeight == 0 && fInputShape[0] == 0) {
+      if (fInputShape[2] == 1 && fInputShape[1] == 1) {
          // case of (1, batchsize, input features)
-         fBatchDepth = 1;
+         fInputShape[0] = 1;
          fBatchHeight = fTrainingSettings.front().batchSize;
-         fBatchWidth = fInputWidth;
+         fBatchWidth = fInputShape[3];
       }
       else { // more general cases (e.g. for CNN) 
-         fBatchDepth = fTrainingSettings.front().batchSize;
-         fBatchHeight = fInputDepth;
-         fBatchWidth = fInputWidth*fInputHeight;
+         fInputShape[0] = fTrainingSettings.front().batchSize;
+         fBatchHeight = fInputShape[1];
+         fBatchWidth = fInputShape[3]*fInputShape[2];
       }
    }
 }
@@ -430,40 +452,26 @@ void MethodDL::ParseInputLayout()
    // Get the input layout string
    TString inputLayoutString = this->GetInputLayoutString();
 
-   size_t depth = 0;
-   size_t height = 0;
-   size_t width = 0;
-
    // Split the input layout string
    TObjArray *inputDimStrings = inputLayoutString.Tokenize(delim);
    TIter nextInputDim(inputDimStrings);
    TObjString *inputDimString = (TObjString *)nextInputDim();
-   int idxToken = 0;
-
+   
+   // Go through every token and save its absolute value in the shape array
+   // The first token is the batch size for easy compatibility with cudnn
+   int subDim = 1;
+   std::vector<size_t> inputShape;
+   inputShape.reserve(inputLayoutString.Length()/2 + 2);
+   inputShape.push_back(0);    // Will be set in ParseBatchLayout()
    for (; inputDimString != nullptr; inputDimString = (TObjString *)nextInputDim()) {
-      switch (idxToken) {
-      case 0: // input depth
-      {
-         TString strDepth(inputDimString->GetString());
-         depth = (size_t)strDepth.Atoi();
-      } break;
-      case 1: // input height
-      {
-         TString strHeight(inputDimString->GetString());
-         height = (size_t)strHeight.Atoi();
-      } break;
-      case 2: // input width
-      {
-         TString strWidth(inputDimString->GetString());
-         width = (size_t)strWidth.Atoi();
-      } break;
-      }
-      ++idxToken;
+      // size_t is unsigned
+      subDim = (size_t) abs(inputDimString->GetString().Atoi());
+      // Size among unused dimensions should be set to 1 for cudnn
+      if (subDim == 0) subDim = 1;
+      inputShape.push_back(subDim);
    }
-
-   this->SetInputDepth(depth);
-   this->SetInputHeight(height);
-   this->SetInputWidth(width);
+   
+   this->SetInputShape(inputShape);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -992,11 +1000,12 @@ void MethodDL::ParseLstmLayer(DNN::TDeepNet<Architecture_t, Layer_t> & /*deepNet
 ////////////////////////////////////////////////////////////////////////////////
 /// Standard constructor.
 MethodDL::MethodDL(const TString &jobName, const TString &methodTitle, DataSetInfo &theData, const TString &theOption)
-   : MethodBase(jobName, Types::kDL, methodTitle, theData, theOption), fInputDepth(), fInputHeight(), fInputWidth(),
-     fBatchDepth(), fBatchHeight(), fBatchWidth(), fRandomSeed(0), fWeightInitialization(), fOutputFunction(), fLossFunction(),
-     fInputLayoutString(), fBatchLayoutString(), fLayoutString(), fErrorStrategy(), fTrainingStrategyString(),
-     fWeightInitializationString(), fArchitectureString(), fResume(false), fBuildNet(true), fTrainingSettings(), 
-     fXInput({0})
+   : MethodBase(jobName, Types::kDL, methodTitle, theData, theOption), fInputShape(4,0),
+     fBatchHeight(), fBatchWidth(), fRandomSeed(0), fWeightInitialization(),
+     fOutputFunction(), fLossFunction(), fInputLayoutString(), fBatchLayoutString(),
+     fLayoutString(), fErrorStrategy(), fTrainingStrategyString(), fWeightInitializationString(),
+     fArchitectureString(), fResume(false), fBuildNet(true), fTrainingSettings(),
+     fXInput()
 {
    // Nothing to do here
 }
@@ -1004,11 +1013,12 @@ MethodDL::MethodDL(const TString &jobName, const TString &methodTitle, DataSetIn
 ////////////////////////////////////////////////////////////////////////////////
 /// Constructor from a weight file.
 MethodDL::MethodDL(DataSetInfo &theData, const TString &theWeightFile)
-   : MethodBase(Types::kDL, theData, theWeightFile), fInputDepth(), fInputHeight(), fInputWidth(), fBatchDepth(),
-     fBatchHeight(), fBatchWidth(), fRandomSeed(0), fWeightInitialization(), fOutputFunction(), fLossFunction(), fInputLayoutString(),
-     fBatchLayoutString(), fLayoutString(), fErrorStrategy(), fTrainingStrategyString(), fWeightInitializationString(),
+   : MethodBase(Types::kDL, theData, theWeightFile), fInputShape(4,0), fBatchHeight(),
+     fBatchWidth(), fRandomSeed(0), fWeightInitialization(), fOutputFunction(),
+     fLossFunction(), fInputLayoutString(), fBatchLayoutString(), fLayoutString(),
+     fErrorStrategy(), fTrainingStrategyString(), fWeightInitializationString(),
      fArchitectureString(), fResume(false), fBuildNet(true), fTrainingSettings(),
-     fXInput({0})
+     fXInput()
 {
    // Nothing to do here
 }
@@ -1294,13 +1304,13 @@ void MethodDL::TrainDeepNet()
       // Loading the training and validation datasets
       TMVAInput_t trainingTuple = std::tie(eventCollectionTraining, DataInfo());
       TensorDataLoader_t trainingData(trainingTuple, nTrainingSamples, deepNet.GetBatchSize(),
-                                      deepNet.GetBatchDepth(), deepNet.GetBatchHeight(), deepNet.GetBatchWidth(),
-                                      deepNet.GetOutputWidth(), nThreads);
+                                      deepNet.GetBatchHeight(), deepNet.GetBatchWidth(),
+                                      deepNet.GetOutputWidth(), this->GetInputShape(), nThreads);
 
       TMVAInput_t validationTuple = std::tie(eventCollectionValidation, DataInfo());
       TensorDataLoader_t validationData(validationTuple, nValidationSamples, deepNet.GetBatchSize(),
-                                     deepNet.GetBatchDepth(), deepNet.GetBatchHeight(), deepNet.GetBatchWidth(),
-                                     deepNet.GetOutputWidth(), nThreads);
+                                        deepNet.GetBatchHeight(), deepNet.GetBatchWidth(),
+                                        deepNet.GetOutputWidth(), this->GetInputShape(),  nThreads);
 
 
 
@@ -1741,10 +1751,10 @@ std::vector<Double_t> MethodDL::PredictDeepNet(Long64_t firstEvt, Long64_t lastE
       n1 = deepNet.GetBatchSize();
       n0 = 1;
    }
-
+   this->SetBatchDepth(n0);
    Long64_t nEvents = lastEvt - firstEvt; 
    TMVAInput_t testTuple = std::tie(GetEventCollection(Data()->GetCurrentType()), DataInfo());
-   TensorDataLoader_t testData(testTuple, nEvents, batchSize, n0, n1, n2, deepNet.GetOutputWidth(), 1);
+   TensorDataLoader_t testData(testTuple, nEvents, batchSize, n1, n2, deepNet.GetOutputWidth(), this->GetInputShape(), 1);
 
 
    // Tensor_t xInput;
@@ -2031,7 +2041,7 @@ void MethodDL::ReadWeightsFromXML(void * rootXML)
                                                    static_cast<ELossFunction>(lossFunctionChar),
                                                    static_cast<EInitialization>(initializationChar),
                                                    static_cast<ERegularization>(regularizationChar),
-                                                    weightDecay));
+                                                   weightDecay));
 
    fOutputFunction = static_cast<EOutputFunction>(outputFunctionChar);
 
