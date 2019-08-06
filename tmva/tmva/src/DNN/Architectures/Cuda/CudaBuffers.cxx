@@ -63,6 +63,13 @@ TCudaHostBuffer<AFloat> TCudaHostBuffer<AFloat>::GetSubBuffer(size_t offset, siz
    return buffer;
 }
 
+//______________________________________________________________________________
+template <typename AFloat>
+void TCudaHostBuffer<AFloat>::SetConstVal(const AFloat constVal)
+{
+   for (size_t i = 0; i < fSize; i++) (*fHostPointer)[i] = constVal;
+}
+
 //
 // TCudaDevicePointer
 //______________________________________________________________________________

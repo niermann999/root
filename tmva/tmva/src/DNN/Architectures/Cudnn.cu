@@ -28,8 +28,11 @@
 namespace TMVA {
 namespace DNN  {
 
-template class TCudnn<Real_t>;
-template class TCudnn<Double_t>;
+//template class TCudnn<Real_t>;
+//template class TCudnn<Double_t>;
+
+template class TCudnn<float>;
+
 
 #ifndef R__HAS_TMVAGPU
    // if R__HAS_TMVAGPU is not defined this file should not be compiled 
