@@ -73,6 +73,8 @@ public:
 
    /** Return sub-buffer of the current buffer. */
    TCudaHostBuffer GetSubBuffer(size_t offset, size_t size);
+   /** Sets the entire buffer to a constant value */
+   void            SetConstVal(const AFloat constVal);
 
    operator AFloat * () const;
 

@@ -49,7 +49,7 @@ size_t                   TCudaTensor<AFloat>::fNOnes            = 0;*/
 //____________________________________________________________________________
 template<typename AFloat>
 TCudaTensor<AFloat>::TCudaTensor()
-    : fShape(), fStrides(nullptr), fNDim(0), fSize(0), fElementBuffer()
+    : fShape(), fStrides(), fNDim(0), fSize(0), fElementBuffer()
 {
    InitializeCuda();
 }
@@ -134,8 +134,8 @@ TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer, size_t dim, c
 
 //____________________________________________________________________________
 template <typename AFloat>
-TCudaTensor<AFloat>::~TCudaTensor() {
-
+TCudaTensor<AFloat>::~TCudaTensor() 
+{
    // Free resources of this instance
    if (fStrides) delete[] fStrides;
       
@@ -173,28 +173,43 @@ inline void TCudaTensor<AFloat>::InitializeCuda()
    if      (std::is_same<AFloat, double>::value) { fDataType = CUDNN_DATA_DOUBLE; }
    else if (std::is_same<AFloat, float>::value)  { fDataType = CUDNN_DATA_FLOAT; }
    
-   if (!fStrides) {
+   // No tensor can be set by unparametrized constructor
+   if (fShape.size() == 0) {
       return;
    }
    // cuDNN NdTensor format has a minsize of 3 tensor dimensions
-   else if (fNDim == 2) {
-      CUDNNCHECK(cudnnSetTensor4dDescriptor(fTensorDescriptor,
+   else if (fNDim <= 2) {
+      /*CUDNNCHECK(cudnnSetTensor4dDescriptor(fTensorDescriptor,
                                             CUDNN_TENSOR_NCHW,// Layout of the tensor in memory
                                             fDataType,
-                                            (int)fShape[0],  // batch size
-                                            (int)fShape[1],  // no. channels
-                                            (int)fShape[2],  // image height
-                                            (int)fShape[3]));// image width
+                                            (int)fShape[0],   // batch size
+                                            (int)fShape[1],   // no. channels
+                                            (int)fShape[2],   // image height
+                                            (int)fShape[3])); // image width*/
+      CUDNNCHECK(cudnnSetTensor4dDescriptorEx(fTensorDescriptor,
+                                              fDataType,
+                                              (int)fShape[0],   // batch size
+                                              (int)fShape[1],   // no. channels
+                                              (int)fShape[2],   // image height
+                                              (int)fShape[3],   // image width
+                                              (int)fStrides[0],   // batch stride
+                                              (int)fStrides[1],   // channel stride
+                                              (int)fStrides[2],   // image height stride
+                                              (int)fStrides[3])); // image width stride
    
    }
    // Evade case fNDim = 0
    else {
      CUDNNCHECK(cudnnSetTensorNdDescriptor(fTensorDescriptor,
-                                            fDataType,
-                                            (int)fNDim,
-                                            (int *)fShape.data(),
-                                            (int *)fStrides));
+                                           fDataType,
+                                           (int)fNDim,
+                                           (int *)fShape.data(),
+                                           (int *)fStrides));
    }
+   
+   size_t tensorSize;
+   CUDNNCHECK(cudnnGetTensorSizeInBytes(fTensorDescriptor, &tensorSize));
+   assert(fSize == tensorSize/sizeof(AFloat));
 }
 
 //____________________________________________________________________________

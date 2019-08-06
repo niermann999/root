@@ -79,12 +79,13 @@ public:
     *  formed. */
    //static void Backward();
    
-   /** Adds a the elements in matrix B scaled by c to the elements in
-    *  the matrix A. This is required for the weight update in the gradient
-    *  descent step.*/
-   //static void ScaleAdd(TCudaTensor<AFloat> & A,
-   //                     const TCudaTensor<AFloat> & B,
-   //                     Scalar_t beta = 1.0);
+   /** Adds the elements in matrix B scaled by beta to the elements in
+    *  the matrix A (scaled by alpha). This is required for the weight update
+    *  in the gradient descent step.*/
+   static void ScaleAdd(TCudaTensor<Scalar_t> & A,
+                        const TCudaTensor<Scalar_t> & B,
+                        Scalar_t alpha = 1.0,
+                        Scalar_t beta  = 1.0);
    /** Copy the elements of matrix A into matrix B. */
    //static void Copy(TCudaTensor<AFloat> & B,
    //                 const TCudaTensor<AFloat> & A);
@@ -95,12 +96,13 @@ public:
 
 
    /** Above functions extended to vectors */
-   /*static void ScaleAdd(std::vector<TCudaTensor<Scalar_t>> & A,
+   static void ScaleAdd(std::vector<TCudaTensor<Scalar_t>> & A,
                         const std::vector<TCudaTensor<Scalar_t>> & B,
-                        Scalar_t beta = 1.0);
+                        Scalar_t alpha = 1.0,
+                        Scalar_t beta  = 1.0);
 
    static void Copy(std::vector<TCudaTensor<Scalar_t>> & A,
-                    const std::vector<TCudaTensor<Scalar_t>> & B);*/
+                    const std::vector<TCudaTensor<Scalar_t>> & B);
 
    // copy from another architecture
    /*template<typename AMatrix_t>
@@ -366,8 +368,86 @@ const std::vector<AMatrix_t> & B);*/
 
    //____________________________________________________________________________
    //
+   // Additional Arithmetic Functions
+   //____________________________________________________________________________
+
+   /** @name Additional Arithmetic Functions
+    *
+    * Additional arithmetic on CUDA matrices  used to implement the low-level
+    * interface.
+    */
+   ///@{
+
+   /** Standard multiplication of two matrices \p A and \p B with the result being
+    *  written into C.
+    */
+   static void Multiply(TCudaTensor<Scalar_t> & C,
+                        const TCudaTensor<Scalar_t> & A,
+                        const TCudaTensor<Scalar_t> & B,
+                        const Scalar_t alpha = 1.0,
+                        const Scalar_t beta  = 1.0,
+                        const Scalar_t gamma = 0.0);
+   /** Matrix multiplication of two matrices \p A and \p B^T (transposed) with the
+    *  result being written into C.
+    */
+   /*static void TransposeMultiply(TCudaTensor<AFloat> & output,
+                                 const TCudaTensor<AFloat> & input,
+                                 const TCudaTensor<AFloat> & Weights);*/
+   /** In-place Hadamard (element-wise) product of matrices \p A and \p B
+    *  with the result being written into \p A.
+    */
+   /*static void Hadamard(TCudaTensor<AFloat> & A, const TCudaMatrix<AFloat> & B);*/
+
+   /** Sum columns of (m x n) matrix \p A and write the results into the first
+    * m elements in \p B.
+    */
+   /*static void SumColumns(TCudaTensor<AFloat> & B, const TCudaMatrix<AFloat> & A);*/
+
+   /** Sum rows of (m x n) matrix \p A and write the results into the first
+   * m elements in \p B.
+   */
+   /*static void SumRows(TCudaTensor<AFloat> & B, const TCudaMatrix<AFloat> & A);*/
+
+   /** Compute the sum of all elements in \p A */
+   static AFloat Sum(const TCudaTensor<Scalar_t> &A, const Scalar_t alpha = 1.0, const Scalar_t beta = 0.0);
+
+   /** Check two matrices for equality, taking floating point arithmetic errors into account. */
+   /*static bool AlmostEquals(const TCudaTensor<AFloat> &A, const TCudaTensor<AFloat> &B, double epsilon = 0.1);*/
+
+   /** Add the constant \p beta to all the elements of matrix \p A and write the
+    * result into \p A.
+    */
+   static void ConstAdd(TCudaTensor<Scalar_t> &A, Scalar_t beta);
+
+   /** Multiply the constant \p beta to all the elements of matrix \p A and write the
+    * result into \p A.
+    */
+   static void ConstMult(TCudaTensor<Scalar_t> &A, Scalar_t beta);
+
+   /** Reciprocal each element of the matrix \p A and write the result into
+    * \p A
+    */
+   /*static void ReciprocalElementWise(TCudaTensor<AFloat> &A);*/
+
+   /** Square each element of the matrix \p A and write the result into
+    * \p A
+    */
+   /*static void SquareElementWise(TCudaTensor<AFloat> &A);*/
+
+   /** Square root each element of the matrix \p A and write the result into
+    * \p A
+    */
+   static void SqrtElementWise(TCudaTensor<Scalar_t> &A, const Scalar_t alpha = 1, const Scalar_t beta = 0, const Scalar_t gamma = 0);
+
+   //____________________________________________________________________________
+   //
    // Optimizers (not in cudnn)
    //____________________________________________________________________________
+   
+   // optimizer functions
+   /*static void AdamUpdate(TCudaTensor<AFloat> & A, const TCudaTensor<AFloat> & M, const TCudaTensor<AFloat> & V, AFloat alpha, AFloat eps);
+   static void AdamUpdateFirstMom(TCudaTensor<AFloat> & A, const TCudaTensor<AFloat> & B, AFloat beta);
+   static void AdamUpdateSecondMom(TCudaTensor<AFloat> & A, const TCudaTensor<AFloat> & B, AFloat beta);*/
 
 };
 

@@ -62,7 +62,6 @@ public:
 private:
 
    static size_t                  fInstances;        ///< Current number of matrix instances.
-   //static cublasHandle_t          fCublasHandle;
    static cudnnHandle_t           fCudnnHandle;      ///< Holds the cuddn library context
    static cudnnTensorDescriptor_t fTensorDescriptor;
    //static AFloat                  * fDeviceReturn;   ///< Buffer for kernel return values.
@@ -77,7 +76,7 @@ private:
     */
    std::vector<size_t> fShape;            ///< batch size, no. of channels and sizes of subdimensions
    size_t              * fStrides;        ///< Strides between tensor dimensions (always assume dense, non overlapping tensor)
-   size_t              fNDim;             ///< Dimension of the tensor
+   size_t              fNDim;             ///< Dimension of the tensor not including the batch size or no. channels
    size_t              fSize;             ///< No. of elements
 
    TCudaDeviceBuffer<AFloat> fElementBuffer;
@@ -100,8 +99,8 @@ public:
    /** Convert cuda matrix to Root TMatrix. Performs synchronous data transfer. */
    //operator Experimental::RTensor<AFloat>() const;
 
-   inline cudaStream_t GetComputeStream() const;
-   inline void         SetComputeStream(cudaStream_t stream);
+   /*inline cudaStream_t GetComputeStream() const;
+   inline void         SetComputeStream(cudaStream_t stream);*/
    /** Set the return buffer on the device to the specified value. This is
     * required for example for reductions in order to initialize the
     * accumulator. */
@@ -115,7 +114,7 @@ public:
 
    /** Blocking synchronization with the associated compute stream, if it's
     * not the default stream. */
-   inline void Synchronize(const TCudaTensor &) const;
+   //inline void Synchronize(const TCudaTensor &) const;
 
    const std::vector<size_t> GetShape() const {return fShape;}
    const size_t * GetStrides() const {return fStrides;}
@@ -126,7 +125,8 @@ public:
     
    const AFloat * GetDataPointer() const {return fElementBuffer;}
    AFloat       * GetDataPointer()       {return fElementBuffer;}
-   //const cublasHandle_t & GetCublasHandle() const    {return fCublasHandle;}
+   const cudnnHandle_t           & GetCudnnHandle()      const    {return fCudnnHandle;}
+   const cudnnTensorDescriptor_t & GetTensorDescriptor() const    {return fTensorDescriptor;}
 
    /** Access to elements of device matrices provided through TCudaDeviceReference
     *  class. Note that access is synchronous end enforces device synchronization
@@ -167,7 +167,7 @@ inline void cudnnError(cudnnStatus_t status, const char *file, int line, bool ab
 }
 
 //______________________________________________________________________________
-template<typename AFloat>
+/*template<typename AFloat>
 inline cudaStream_t TCudaTensor<AFloat>::GetComputeStream() const
 {
    return fElementBuffer.GetComputeStream();
@@ -189,7 +189,7 @@ inline void TCudaTensor<AFloat>::Synchronize(const TCudaTensor &A) const
    cudaEventRecord(event, A.GetComputeStream());
    cudaStreamWaitEvent(fElementBuffer.GetComputeStream(), event, 0);
    cudaEventDestroy(event);
-}
+}*/
 
 //______________________________________________________________________________
 // template<typename AFloat>
