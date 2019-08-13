@@ -84,8 +84,8 @@ public:
     *  in the gradient descent step.*/
    static void ScaleAdd(TCudaTensor<Scalar_t> & A,
                         const TCudaTensor<Scalar_t> & B,
-                        Scalar_t alpha = 1.0,
-                        Scalar_t beta  = 1.0);
+                        const Scalar_t alpha = 1.0,
+                        const Scalar_t beta  = 1.0);
    /** Copy the elements of matrix A into matrix B. */
    //static void Copy(TCudaTensor<AFloat> & B,
    //                 const TCudaTensor<AFloat> & A);
@@ -98,8 +98,8 @@ public:
    /** Above functions extended to vectors */
    static void ScaleAdd(std::vector<TCudaTensor<Scalar_t>> & A,
                         const std::vector<TCudaTensor<Scalar_t>> & B,
-                        Scalar_t alpha = 1.0,
-                        Scalar_t beta  = 1.0);
+                        const Scalar_t alpha = 1.0,
+                        const Scalar_t beta  = 1.0);
 
    static void Copy(std::vector<TCudaTensor<Scalar_t>> & A,
                     const std::vector<TCudaTensor<Scalar_t>> & B);
@@ -410,19 +410,23 @@ const std::vector<AMatrix_t> & B);*/
 
    /** Compute the sum of all elements in \p A */
    static AFloat Sum(const TCudaTensor<Scalar_t> &A, const Scalar_t alpha = 1.0, const Scalar_t beta = 0.0);
+   
+   /** Extend the sum of a CudaTensor to a vector  */
+   static AFloat Sum(const std::vector<TCudaTensor<Scalar_t> > &A, 
+                     const Scalar_t alpha = 1.0, const Scalar_t beta = 0.0);
 
    /** Check two matrices for equality, taking floating point arithmetic errors into account. */
-   /*static bool AlmostEquals(const TCudaTensor<AFloat> &A, const TCudaTensor<AFloat> &B, double epsilon = 0.1);*/
+   static bool AlmostEquals(const TCudaTensor<AFloat> &A, const TCudaTensor<AFloat> &B, double epsilon = 0.1);
 
    /** Add the constant \p beta to all the elements of matrix \p A and write the
     * result into \p A.
     */
-   static void ConstAdd(TCudaTensor<Scalar_t> &A, Scalar_t beta);
+   static void ConstAdd(TCudaTensor<Scalar_t> &A, const Scalar_t beta);
 
    /** Multiply the constant \p beta to all the elements of matrix \p A and write the
     * result into \p A.
     */
-   static void ConstMult(TCudaTensor<Scalar_t> &A, Scalar_t beta);
+   static void ConstMult(TCudaTensor<Scalar_t> &A, const Scalar_t beta);
 
    /** Reciprocal each element of the matrix \p A and write the result into
     * \p A

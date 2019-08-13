@@ -51,8 +51,8 @@ private:
    const AData &fData; ///< The data that should be loaded in the batches.
    
    size_t fNSamples;        ///< The total number of samples in the dataset.
-   size_t fBatchSize;       ///< The size of a batch.
-   //size_t fBatchDepth;      ///< The number of matrices in the tensor.
+   //size_t fBatchSize;       ///< The size of a batch.
+   size_t fBatchDepth;      ///< The number of matrices in the tensor.
    size_t fBatchHeight;     ///< The number od rows in each matrix.
    size_t fBatchWidth;      ///< The number of columns in each matrix.
    size_t fNOutputFeatures; ///< The number of outputs from the classifier/regressor.
@@ -68,7 +68,7 @@ private:
 
 public:
    /*! Constructor. */
-   TTensorDataLoader(const AData &data, size_t nSamples, size_t batchSize, 
+   TTensorDataLoader(const AData &data, size_t nSamples, size_t batchDepth, 
                      size_t batchHeight, size_t batchWidth, size_t nOutputFeatures, 
                      std::vector<size_t> inputShape, size_t nStreams = 1);
 
@@ -88,7 +88,7 @@ public:
    void CopyTensorWeights(TMatrixT<AReal> &matrix, IndexIterator_t sampleIterator);
 
    BatchIterator_t begin() { return BatchIterator_t(*this); }
-   BatchIterator_t end() { return BatchIterator_t(*this, fNSamples / fBatchSize); }
+   BatchIterator_t end() { return BatchIterator_t(*this, fNSamples / fInputShape[0]); }
 
    /** Shuffle the order of the samples in the batch. The shuffling is indirect,
     *  i.e. only the indices are shuffled. No input data is moved by this
@@ -106,16 +106,16 @@ public:
 // TTensorDataLoader Class.
 //______________________________________________________________________________
 template <typename AData, typename AReal>
-TTensorDataLoader<AData, TReference<AReal>>::TTensorDataLoader(const AData &data, size_t nSamples, size_t batchSize, 
+TTensorDataLoader<AData, TReference<AReal>>::TTensorDataLoader(const AData &data, size_t nSamples, size_t batchDepth, 
                                                                size_t batchHeight, size_t batchWidth, size_t nOutputFeatures,
-                                                               std::vector<size_t> /*inputShape*/, size_t /* nStreams */)
-   : fData(data), fNSamples(nSamples), fBatchSize(batchSize), fBatchHeight(batchHeight),
-     fBatchWidth(batchWidth), fNOutputFeatures(nOutputFeatures), fBatchIndex(0), inputTensor(),
-     outputMatrix(batchSize, nOutputFeatures), weightMatrix(batchSize, 1), fSampleIndices()
+                                                               std::vector<size_t> inputShape, size_t /* nStreams */)
+   : fData(data), fNSamples(nSamples), fBatchDepth(batchDepth), fBatchHeight(batchHeight),
+     fBatchWidth(batchWidth), fNOutputFeatures(nOutputFeatures), fBatchIndex(0), fInputShape(std::move(inputShape)), inputTensor(),
+     outputMatrix(inputShape[0], nOutputFeatures), weightMatrix(inputShape[0], 1), fSampleIndices()
 {
 
-   inputTensor.reserve(fInputShape[0]);
-   for (size_t i = 0; i < fInputShape[0]; i++) {
+   inputTensor.reserve(fBatchDepth);
+   for (size_t i = 0; i < fBatchDepth; i++) {
       inputTensor.emplace_back(batchHeight, batchWidth);
    }
 
@@ -135,9 +135,9 @@ void TTensorDataLoader<AData, TReference<AReal>>::Shuffle(RNG & rng)
 template <typename AData, typename AReal>
 auto TTensorDataLoader<AData, TReference<AReal>>::GetTensorBatch() -> TTensorBatch<TReference<AReal>>
 {
-   fBatchIndex %= (fNSamples / fBatchSize); // Cycle through samples.
+   fBatchIndex %= (fNSamples / fInputShape[0]); // Cycle through samples.
 
-   size_t sampleIndex = fBatchIndex * fBatchSize;
+   size_t sampleIndex = fBatchIndex * fInputShape[0];
    IndexIterator_t sampleIndexIterator = fSampleIndices.begin() + sampleIndex;
 
    CopyTensorInput(inputTensor, sampleIndexIterator);

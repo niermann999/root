@@ -19,15 +19,18 @@
 #ifndef TMVA_DNN_ARCHITECTURES_CUDA_CUDATENSOR
 #define TMVA_DNN_ARCHITECTURES_CUDA_CUDATENSOR
 
-#include "cuda.h"
+//#include "cuda.h"
 #include "cudnn.h"
-#include "cuda_runtime.h"
+/*#include "cuda_runtime.h"
 #include "cublas_v2.h"
-#include "curand_kernel.h"
+#include "curand_kernel.h"*/
+//#include "thrust/fill.h"
+//#include "thrust/device_vector.h"
 
 #include <vector>
+#include <cstring>
 
-//#include "TMatrixT.h"
+#include "TMatrixT.h"
 #include "CudaBuffers.h"
 //#include "CudaMatrix.h"
 //#include "TMVA/RTensor.hxx"
@@ -61,24 +64,31 @@ public:
 
 private:
 
-   static size_t                  fInstances;        ///< Current number of matrix instances.
-   static cudnnHandle_t           fCudnnHandle;      ///< Holds the cuddn library context
-   static cudnnTensorDescriptor_t fTensorDescriptor;
-   //static AFloat                  * fDeviceReturn;   ///< Buffer for kernel return values.
-   //static AFloat                  * fOnes;           ///< Vector used for summations of columns.
-   //static size_t                  fNOnes;            ///< Current length of the one vector.
-   //static curandState_t           * fCurandStates;
-   //static size_t                  fNCurandStates;
-   static cudnnDataType_t         fDataType;         ///< Cudnn datatype used for the tensor
+   //static size_t                         fInstances;        ///< Current number of matrix instances.
+   static std::vector<cudnnHandle_t>     fCudnnHandle;      ///< Holds the cuddn library context (one for every CUDA stream and device)
+   //static AFloat                         * fDeviceReturn;   ///< Buffer for kernel return values.
+   //static AFloat                         * fOnes;           ///< Vector used for summations of columns.
+   //static size_t                         fNOnes;            ///< Current length of the one vector.
+   //static curandState_t                  * fCurandStates;
+   //static size_t                         fNCurandStates;
+   static cudnnDataType_t                fDataType;         ///< Cudnn datatype used for the tensor
+   /** For each GPU device keep the CUDA streams in which tensors are used. 
+     * Instances belonging to the same stream on the same deviceshare a 
+     * cudnn library handel to keep cudnn contexts seperated */
+   //static std::vector<std::vector<int> > fInstances;
+   static std::vector<int> fInstances;
 
    /** The shape (size of dimensions) needs to be ordered as no. channels,
     *  image dimensions.
     */
    std::vector<size_t> fShape;            ///< batch size, no. of channels and sizes of subdimensions
    size_t              * fStrides;        ///< Strides between tensor dimensions (always assume dense, non overlapping tensor)
-   size_t              fNDim;             ///< Dimension of the tensor not including the batch size or no. channels
+   size_t              fNDim;             ///< Dimension of the tensor (first dimension is the batch size, second is the no. channels)
    size_t              fSize;             ///< No. of elements
-
+   int                 fDevice;           ///< Device associated with current tensor instance
+   int                 fStreamIndx;           ///< Cuda stream associated with current instance
+          
+   cudnnTensorDescriptor_t   fTensorDescriptor;
    TCudaDeviceBuffer<AFloat> fElementBuffer;
 
 public:
@@ -86,11 +96,21 @@ public:
    //static AFloat * GetOnes() {return fOnes;}
 
    TCudaTensor();
-   TCudaTensor(size_t size, size_t ndim, const std::vector<size_t> shape);
-   TCudaTensor(size_t size, const AFloat * data, size_t ndim, const std::vector<size_t> shape);
-   TCudaTensor(TCudaDeviceBuffer<AFloat> buffer, size_t ndim, const std::vector<size_t> shape);
+   TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor, size_t ndim, 
+               const std::vector<size_t> shape,
+               int deviceIndx = 0, 
+               int streamIndx = 0);
+   TCudaTensor(size_t size, size_t ndim, 
+               const std::vector<size_t> shape, 
+               int deviceIndx = 0, int streamIndx = 0);
+   TCudaTensor(size_t size, const AFloat * data, size_t ndim, 
+               const std::vector<size_t> shape,
+               int deviceIndx = 0, int streamIndx = 0);
+   TCudaTensor(TCudaDeviceBuffer<AFloat> buffer, size_t ndim, 
+               const std::vector<size_t> shape,
+               int deviceIndx = 0, int streamIndx = 0);
 
-   TCudaTensor(const TCudaTensor  &) = default;
+   TCudaTensor(const TCudaTensor  &);
    TCudaTensor(      TCudaTensor &&) = default;
    TCudaTensor & operator=(const TCudaTensor  &) = default;
    TCudaTensor & operator=(      TCudaTensor &&) = default;
@@ -122,11 +142,12 @@ public:
    size_t GetNDim() const {return fNDim;}
    size_t GetSize() const {return fSize;}
     
-    
    const AFloat * GetDataPointer() const {return fElementBuffer;}
    AFloat       * GetDataPointer()       {return fElementBuffer;}
-   const cudnnHandle_t           & GetCudnnHandle()      const    {return fCudnnHandle;}
-   const cudnnTensorDescriptor_t & GetTensorDescriptor() const    {return fTensorDescriptor;}
+   const TCudaDeviceBuffer<AFloat> & GetDeviceBuffer()     const {return fElementBuffer;}
+   TCudaDeviceBuffer<AFloat>       & GetDeviceBuffer()           {return fElementBuffer;}
+   const cudnnHandle_t             & GetCudnnHandle()      const {return fCudnnHandle[fStreamIndx];}
+   const cudnnTensorDescriptor_t   & GetTensorDescriptor() const {return fTensorDescriptor;}
 
    /** Access to elements of device matrices provided through TCudaDeviceReference
     *  class. Note that access is synchronous end enforces device synchronization
@@ -140,6 +161,12 @@ public:
 
    void Zero() {
       cudaMemset(GetDataPointer(), 0, sizeof(AFloat) * GetSize());
+   }
+   
+   void SetConstVal(const AFloat constVal) {
+      TCudaHostBuffer<AFloat> hostBuffer(fSize);
+      hostBuffer.SetConstVal(constVal);
+      fElementBuffer.CopyFrom(hostBuffer);
    }
 
 
