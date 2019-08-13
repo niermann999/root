@@ -136,6 +136,7 @@ public:
    void CopyFrom(const TCudaHostBuffer<AFloat> &) const;
    void CopyTo(const TCudaHostBuffer<AFloat> &)   const;
 
+   size_t GetSize() const {return fSize;}
    cudaStream_t GetComputeStream() const {return fComputeStream;}
    void SetComputeStream(cudaStream_t stream) {fComputeStream = stream;}
 

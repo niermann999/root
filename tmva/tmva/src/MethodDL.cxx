@@ -161,7 +161,7 @@ std::vector<double> fetchValueTmp(const std::map<TString, TString> &keyValueMap,
 void MethodDL::DeclareOptions()
 {
    // Set default values for all option strings
-
+   
    DeclareOptionRef(fInputLayoutString = "0|0|0", "InputLayout", "The Layout of the input");
 
    DeclareOptionRef(fBatchLayoutString = "0|0|0", "BatchLayout", "The Layout of the batch");
@@ -264,8 +264,8 @@ void MethodDL::ProcessOptions()
   else if (fArchitectureString == "CUDNN") {
 #ifndef R__HAS_TMVAGPU    // case TMVA does not support GPU
       Log() << kERROR << "CUDA backend not enabled. Please make sure "
-         "you have CUDNN and CUDA installed and it was successfully "
-         "detected by CMAKE by using -Dcuda=On"
+            "you have CUDNN and CUDA installed and that the GPU capability/CUDA "
+            "was successfully detected by CMAKE by using -Dcuda=On"
             << Endl;
 #ifdef R__HAS_TMVACPU
       fArchitectureString = "CPU";
@@ -409,9 +409,11 @@ void MethodDL::ProcessOptions()
       fTrainingSettings.push_back(settings);
    }
 
+   this->SetBatchSize(fTrainingSettings.front().batchSize);
+   
    // case inputlayout and batch layout was not given. Use default then
    // (1, batchsize, nvariables)
-   // fInputShape[0] -> BatchDepth
+   // fInputShape[0] -> BatchSize
    // fInputShape[1] -> InputDepth
    // fInputShape[2] -> InputHeight
    // fInputShape[3] -> InputWidth
@@ -420,17 +422,17 @@ void MethodDL::ProcessOptions()
       fInputShape[2] = 1;
       fInputShape[3] = GetNVariables();
    }
-   if (fBatchWidth == 0 && fBatchHeight == 0 && fInputShape[0] == 0) {
+   if (fBatchWidth == 0 && fBatchHeight == 0 && fBatchDepth == 0) {
       if (fInputShape[2] == 1 && fInputShape[1] == 1) {
          // case of (1, batchsize, input features)
-         fInputShape[0] = 1;
+         fBatchDepth  = 1;
          fBatchHeight = fTrainingSettings.front().batchSize;
-         fBatchWidth = fInputShape[3];
+         fBatchWidth  = fInputShape[3];
       }
       else { // more general cases (e.g. for CNN) 
-         fInputShape[0] = fTrainingSettings.front().batchSize;
+         fBatchDepth  = fTrainingSettings.front().batchSize;
          fBatchHeight = fInputShape[1];
-         fBatchWidth = fInputShape[3]*fInputShape[2];
+         fBatchWidth  = fInputShape[3]*fInputShape[2];
       }
    }
 }
@@ -462,7 +464,7 @@ void MethodDL::ParseInputLayout()
    int subDim = 1;
    std::vector<size_t> inputShape;
    inputShape.reserve(inputLayoutString.Length()/2 + 2);
-   inputShape.push_back(0);    // Will be set in ParseBatchLayout()
+   inputShape.push_back(30);    // Will be set by Trainingsettings, use default now
    for (; inputDimString != nullptr; inputDimString = (TObjString *)nextInputDim()) {
       // size_t is unsigned
       subDim = (size_t) abs(inputDimString->GetString().Atoi());
@@ -1185,17 +1187,18 @@ void MethodDL::TrainDeepNet()
 
       // After the processing of the options, initialize the master deep net
       size_t batchSize = settings.batchSize;
+      this->SetBatchSize(batchSize);
       // Should be replaced by actual implementation. No support for this now.
-      size_t inputDepth = this->GetInputDepth();
+      size_t inputDepth  = this->GetInputDepth();
       size_t inputHeight = this->GetInputHeight();
-      size_t inputWidth = this->GetInputWidth();
-      size_t batchDepth = this->GetBatchDepth();
+      size_t inputWidth  = this->GetInputWidth();
+      size_t batchDepth  = this->GetBatchDepth();
       size_t batchHeight = this->GetBatchHeight();
-      size_t batchWidth = this->GetBatchWidth();
-      ELossFunction J = this->GetLossFunction();
-      EInitialization I = this->GetWeightInitialization();
-      ERegularization R = settings.regularization;
-      EOptimizer O = settings.optimizer;
+      size_t batchWidth  = this->GetBatchWidth();
+      ELossFunction J    = this->GetLossFunction();
+      EInitialization I  = this->GetWeightInitialization();
+      ERegularization R    = settings.regularization;
+      EOptimizer O         = settings.optimizer;
       Scalar_t weightDecay = settings.weightDecay;
 
       //Batch size should be included in batch layout as well. There are two possibilities:
@@ -1303,12 +1306,12 @@ void MethodDL::TrainDeepNet()
 
       // Loading the training and validation datasets
       TMVAInput_t trainingTuple = std::tie(eventCollectionTraining, DataInfo());
-      TensorDataLoader_t trainingData(trainingTuple, nTrainingSamples, deepNet.GetBatchSize(),
+      TensorDataLoader_t trainingData(trainingTuple, nTrainingSamples, deepNet.GetBatchDepth(),
                                       deepNet.GetBatchHeight(), deepNet.GetBatchWidth(),
                                       deepNet.GetOutputWidth(), this->GetInputShape(), nThreads);
 
       TMVAInput_t validationTuple = std::tie(eventCollectionValidation, DataInfo());
-      TensorDataLoader_t validationData(validationTuple, nValidationSamples, deepNet.GetBatchSize(),
+      TensorDataLoader_t validationData(validationTuple, nValidationSamples, deepNet.GetBatchDepth(),
                                         deepNet.GetBatchHeight(), deepNet.GetBatchWidth(),
                                         deepNet.GetOutputWidth(), this->GetInputShape(),  nThreads);
 
@@ -1713,20 +1716,20 @@ std::vector<Double_t> MethodDL::PredictDeepNet(Long64_t firstEvt, Long64_t lastE
    }
 
    // rebuild the networks
-
-   size_t inputDepth = this->GetInputDepth();
+   this->SetBatchSize(batchSize);
+   size_t inputDepth  = this->GetInputDepth();
    size_t inputHeight = this->GetInputHeight();
-   size_t inputWidth = this->GetInputWidth();
-   size_t batchDepth = this->GetBatchDepth();
+   size_t inputWidth  = this->GetInputWidth();
+   size_t batchDepth  = this->GetBatchDepth();
    size_t batchHeight = this->GetBatchHeight();
-   size_t batchWidth = this->GetBatchWidth();
-   ELossFunction J = fNet->GetLossFunction();
-   EInitialization I = fNet->GetInitialization();
-   ERegularization R = fNet->GetRegularization();
+   size_t batchWidth  = this->GetBatchWidth();
+   ELossFunction J      = fNet->GetLossFunction();
+   EInitialization I    = fNet->GetInitialization();
+   ERegularization R    = fNet->GetRegularization();
    Double_t weightDecay = fNet->GetWeightDecay();
 
-   using DeepNet_t = TMVA::DNN::TDeepNet<Architecture_t>;
-   using Matrix_t = typename Architecture_t::Matrix_t;
+   using DeepNet_t          = TMVA::DNN::TDeepNet<Architecture_t>;
+   using Matrix_t           = typename Architecture_t::Matrix_t;
    using TensorDataLoader_t = TTensorDataLoader<TMVAInput_t, Architecture_t>;
 
    // create the deep neural network
@@ -1751,10 +1754,10 @@ std::vector<Double_t> MethodDL::PredictDeepNet(Long64_t firstEvt, Long64_t lastE
       n1 = deepNet.GetBatchSize();
       n0 = 1;
    }
-   this->SetBatchDepth(n0);
+   //this->SetBatchDepth(n0);
    Long64_t nEvents = lastEvt - firstEvt; 
    TMVAInput_t testTuple = std::tie(GetEventCollection(Data()->GetCurrentType()), DataInfo());
-   TensorDataLoader_t testData(testTuple, nEvents, batchSize, n1, n2, deepNet.GetOutputWidth(), this->GetInputShape(), 1);
+   TensorDataLoader_t testData(testTuple, nEvents, n0, n1, n2, deepNet.GetOutputWidth(), this->GetInputShape(), 1);
 
 
    // Tensor_t xInput;

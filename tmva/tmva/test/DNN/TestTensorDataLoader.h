@@ -14,7 +14,7 @@
 //////////////////////////////////////////////////
 
 #include "TMVA/DNN/Net.h"
-#include "TMVA/DNN/DataLoader.h"
+#include "TMVA/DNN/TensorDataLoader.h"
 #include "Utility.h"
 
 namespace TMVA
@@ -31,33 +31,40 @@ template <typename Architecture_t>
 auto testSum()
     -> typename Architecture_t::Scalar_t
 {
-   using Scalar_t     = typename Architecture_t::Scalar_t;
-   using Matrix_t     = typename Architecture_t::Matrix_t;
-   using DataLoader_t = TDataLoader<MatrixInput_t, Architecture_t>;
+   using Scalar_t           = typename Architecture_t::Scalar_t;
+   using Matrix_t           = typename Architecture_t::Matrix_t;
+   using TensorDataLoader_t = TTensorDataLoader<TensorInput, Architecture_t>;
 
    size_t nSamples = 10000;
-   TMatrixT<Double_t> X(nSamples,1);
+   TMatrixT<Double_t> X(nSamples, 1);
    randomMatrix(X);
    for (size_t i = 0; i < 10000; i++) {
       X(i,0) = i;
    }
-   MatrixInput_t input(X, X, X);
-   DataLoader_t  loader(input, nSamples, 5, 1, 1);
+   //MatrixInput_t input(X, X, X);
+   std::vector<size_t> inputShape {5, 1, nSamples, 1};
+   std::vector<TMatrixT<Double_t> > MatrixVec {X};
+   TensorInput input (MatrixVec, X, X);
+   TensorDataLoader_t  loader(input, nSamples, inputShape);
 
-   Matrix_t XArch(X), Sum(1,1), SumTotal(1,1);
+   Matrix_t XArch(MatrixVec, (size_t)4, inputShape);
    Scalar_t sum = 0.0, sumTotal = 0.0;
 
    for (auto b : loader) {
-      Architecture_t::SumColumns(Sum, b.GetInput());
+      sum += Architecture_t::Sum(b.GetInput());
+      sum += Architecture_t::Sum(b.GetOutput());
+      sum += Architecture_t::Sum(b.GetWeights());
+      /*Architecture_t::SumColumns(Sum, b.GetInput());
       sum += Sum(0, 0);
       Architecture_t::SumColumns(Sum, b.GetOutput());
       sum += Sum(0, 0);
       Architecture_t::SumColumns(Sum, b.GetWeights());
-      sum += Sum(0, 0);
+      sum += Sum(0, 0);*/
    }
 
-   Architecture_t::SumColumns(SumTotal, XArch);
-   sumTotal = 3.0 * SumTotal(0, 0);
+   sumTotal = 3.0 * Architecture_t::Sum(XArch);
+   /*Architecture_t::SumColumns(SumTotal, XArch);
+   sumTotal = 3.0 * SumTotal(0, 0);*/
 
    return fabs(sumTotal - sum) / sumTotal;
 }
@@ -66,13 +73,13 @@ auto testSum()
  *  through an identity neural network and computing the the mean squared error,
  *  should obviously be zero. */
 //______________________________________________________________________________
-/*template <typename Architecture_t>
+template <typename Architecture_t>
 auto testIdentity()
     -> typename Architecture_t::Scalar_t
 {
-   using Scalar_t     = typename Architecture_t::Scalar_t;
-   using Net_t        = TNet<Architecture_t>;
-   using DataLoader_t = TDataLoader<MatrixInput_t, Architecture_t>;
+   /*using Scalar_t           = typename Architecture_t::Scalar_t;
+   using Net_t              = TNet<Architecture_t>;
+   using TensorDataLoader_t = TTensorDataLoader<MatrixInput_t, Architecture_t>;
 
    TMatrixT<Double_t> X(2000, 100), W(2000, 1);
    randomMatrix(X);
@@ -94,8 +101,8 @@ auto testIdentity()
        maximumError = std::max(error, maximumError);
    }
 
-   return maximumError;
-}*/
+   return maximumError;*/
+}
 
 } // namespace DNN
 } // namespace TMVA
