@@ -88,13 +88,13 @@ void TCuda<AFloat>::AddRowWise(TCudaMatrix<AFloat> &Weights,
 
 //____________________________________________________________________________
 template<typename AFloat>
-void TCuda<AFloat>::Backward(TCudaMatrix<AFloat> & activation_gradients_backward,
+void TCuda<AFloat>::Backward(TCudaTensor<AFloat> & activation_gradients_backward,
                              TCudaMatrix<AFloat> & weight_gradients,
                              TCudaMatrix<AFloat> & bias_gradients,
-                             TCudaMatrix<AFloat> & df,
-                             const TCudaMatrix<AFloat> & activation_gradients,
+                             TCudaTensor<AFloat> & df,
+                             const TCudaTensor<AFloat> & activation_gradients,
                              const TCudaMatrix<AFloat> & weights,
-                             const TCudaMatrix<AFloat> & activation_backward)
+                             const TCudaTensor<AFloat> & activation_backward)
 {
    // Compute element-wise product.
    TCuda<AFloat>::Hadamard(df, activation_gradients);
@@ -129,8 +129,8 @@ void TCuda<AFloat>::Copy(TCudaMatrix<AFloat> & B,
 
 //____________________________________________________________________________
 template<typename AFloat>
-void TCuda<AFloat>::Copy(std::vector<TCudaMatrix<AFloat>> & B,
-                             const std::vector<TCudaMatrix<AFloat>> & A)
+void TCuda<AFloat>::Copy(std::vector<TCudaTensor<AFloat>> & B,
+                             const std::vector<TCudaTensor<AFloat>> & A)
 {
    for (size_t i = 0; i < B.size(); ++i) {
       Copy(B[i], A[i]);
@@ -211,7 +211,7 @@ void TCuda<AFloat>::RotateWeights(TCudaMatrix<AFloat> &A,
 }
 
 template <typename AFloat>
-void TCuda<AFloat>::PrepareInternals(std::vector<TCudaMatrix<AFloat>> & inputPrime)
+void TCuda<AFloat>::PrepareInternals(std::vector<TCudaTensor<AFloat>> & inputPrime)
 {
    for (size_t event = 0; event < inputPrime.size(); event++) {
       cudaStream_t s;
@@ -222,12 +222,12 @@ void TCuda<AFloat>::PrepareInternals(std::vector<TCudaMatrix<AFloat>> & inputPri
 
 
 template <typename AFloat>
-void TCuda<AFloat>::ConvLayerForward(std::vector<TCudaMatrix<AFloat>> & output,
-                                     std::vector<TCudaMatrix<AFloat>> & derivatives,
-                                     const std::vector<TCudaMatrix<AFloat>> &input,
+void TCuda<AFloat>::ConvLayerForward(std::vector<TCudaTensor<AFloat>> & output,
+                                     std::vector<TCudaTensor<AFloat>> & derivatives,
+                                     const std::vector<TCudaTensor<AFloat>> &input,
                                      const TCudaMatrix<AFloat> &weights, const TCudaMatrix<AFloat> & biases,
                                      const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
-                                     std::vector<TCudaMatrix<AFloat>> & inputPrime)
+                                     std::vector<TCudaTensor<AFloat>> & inputPrime)
 {
    size_t height = calculateDimension(params.inputHeight, params.filterHeight, params.paddingHeight, params.strideRows);
    size_t width = calculateDimension(params.inputWidth, params.filterWidth, params.paddingWidth, params.strideCols);
@@ -252,13 +252,13 @@ void TCuda<AFloat>::ConvLayerForward(std::vector<TCudaMatrix<AFloat>> & output,
 
 //____________________________________________________________________________
 template<typename AFloat>
-void TCuda<AFloat>::ConvLayerBackward(std::vector<TCudaMatrix<AFloat>> & activationGradientsBackward,
+void TCuda<AFloat>::ConvLayerBackward(std::vector<TCudaTensor<AFloat>> & activationGradientsBackward,
                                       TCudaMatrix<AFloat> & weightGradients,
                                       TCudaMatrix<AFloat> & biasGradients,
-                                      std::vector<TCudaMatrix<AFloat>> & df,
-                                      const std::vector<TCudaMatrix<AFloat>> & activationGradients,
+                                      std::vector<TCudaTensor<AFloat>> & df,
+                                      const std::vector<TCudaTensor<AFloat>> & activationGradients,
                                       const TCudaMatrix<AFloat> & weights,
-                                      const std::vector<TCudaMatrix<AFloat>> & activationBackward,
+                                      const std::vector<TCudaTensor<AFloat>> & activationBackward,
                                       size_t batchSize,
                                       size_t inputHeight,
                                       size_t inputWidth,
@@ -291,8 +291,8 @@ void TCuda<AFloat>::ConvLayerBackward(std::vector<TCudaMatrix<AFloat>> & activat
 //____________________________________________________________________________
 template<typename AFloat>
 void TCuda<AFloat>::CalculateConvActivationGradients(
-                                    std::vector<TCudaMatrix<AFloat>> & activationGradientsBackward,
-                                    std::vector<TCudaMatrix<AFloat>> & df,
+                                    std::vector<TCudaTensor<AFloat>> & activationGradientsBackward,
+                                    std::vector<TCudaTensor<AFloat>> & df,
                                     const TCudaMatrix<AFloat> & weights,
                                     size_t /* batchSize */,
                                     size_t inputHeight,
@@ -334,8 +334,8 @@ void TCuda<AFloat>::CalculateConvActivationGradients(
 //____________________________________________________________________________
 template<typename AFloat>
 void TCuda<AFloat>::CalculateConvWeightGradients(TCudaMatrix<AFloat> & weightGradients,
-                                                 std::vector<TCudaMatrix<AFloat>> & df,
-                                                 const std::vector<TCudaMatrix<AFloat>> & activationsBackward,
+                                                 std::vector<TCudaTensor<AFloat>> & df,
+                                                 const std::vector<TCudaTensor<AFloat>> & activationsBackward,
                                                  size_t batchSize,
                                                  size_t inputHeight,
                                                  size_t inputWidth,
@@ -381,7 +381,7 @@ void TCuda<AFloat>::CalculateConvWeightGradients(TCudaMatrix<AFloat> & weightGra
 //____________________________________________________________________________
 template<typename AFloat>
 void TCuda<AFloat>::CalculateConvBiasGradients(TCudaMatrix<AFloat> & biasGradients,
-                                               std::vector<TCudaMatrix<AFloat>> & df,
+                                               std::vector<TCudaTensor<AFloat>> & df,
                                                size_t batchSize,
                                                size_t /* depth */,
                                                size_t /* nLocalViews */)
@@ -396,7 +396,7 @@ void TCuda<AFloat>::CalculateConvBiasGradients(TCudaMatrix<AFloat> & biasGradien
 
 //____________________________________________________________________________
 template<typename AFloat>
-void TCuda<AFloat>::AddConvBiases(TCudaMatrix<AFloat> &output,
+void TCuda<AFloat>::AddConvBiases(TCudaTensor<AFloat> &output,
                                   const TCudaMatrix<AFloat> &biases)
 {
     dim3 blockDims = TDevice::BlockDims2D();
@@ -432,9 +432,9 @@ void TCuda<AFloat>::AddConvBiases(TCudaMatrix<AFloat> &output,
 /// The slicing process is the same as in a convolutional layer, however padding is set to 0.
 ///////////////////////////////////////////////////////////////////////////////////////////////
 template<typename AFloat>
-void TCuda<AFloat>::Downsample(TCudaMatrix<AFloat> &A,
-                               TCudaMatrix<AFloat> &B,
-                               const TCudaMatrix<AFloat> &C,
+void TCuda<AFloat>::Downsample(TCudaTensor<AFloat> &A,
+                               TCudaTensor<AFloat> &B,
+                               const TCudaTensor<AFloat> &C,
                                size_t imgHeight,
                                size_t imgWidth,
                                size_t fltHeight,
@@ -454,9 +454,9 @@ void TCuda<AFloat>::Downsample(TCudaMatrix<AFloat> &A,
 
 //____________________________________________________________________________
 template<typename AFloat>
-void TCuda<AFloat>::MaxPoolLayerBackward(TCudaMatrix<AFloat> & activationGradientsBackward,
-                                         const TCudaMatrix<AFloat> & activationGradients,
-                                         const TCudaMatrix<AFloat> & indexMatrix,
+void TCuda<AFloat>::MaxPoolLayerBackward(TCudaTensor<AFloat> & activationGradientsBackward,
+                                         const TCudaTensor<AFloat> & activationGradients,
+                                         const TCudaTensor<AFloat> & indexMatrix,
                                          size_t imgHeight,
                                          size_t imgWidth,
                                          size_t fltHeight,
@@ -480,7 +480,7 @@ void TCuda<AFloat>::MaxPoolLayerBackward(TCudaMatrix<AFloat> & activationGradien
 
 //____________________________________________________________________________
 template<typename AFloat>
-void TCuda<AFloat>::Reshape(TCudaMatrix<AFloat> &A, const TCudaMatrix<AFloat> &B)
+void TCuda<AFloat>::Reshape(TCudaTensor<AFloat> &A, const TCudaTensor<AFloat> &B)
 {
     dim3 blockDims = TDevice::BlockDims2D();
     dim3 gridDims  = TDevice::GridDims2D(A);
@@ -492,7 +492,7 @@ void TCuda<AFloat>::Reshape(TCudaMatrix<AFloat> &A, const TCudaMatrix<AFloat> &B
 
 //______________________________________________________________________________
 template <typename AReal>
-void TCuda<AReal>::Rearrange(std::vector<TCudaMatrix<AReal>> &out, const std::vector<TCudaMatrix<AReal>> &in)
+void TCuda<AReal>::Rearrange(std::vector<TCudaTensor<AReal>> &out, const std::vector<TCudaTensor<AReal>> &in)
 {
    // B x T x D out --- T x B x D in*/
    size_t B = out.size();
@@ -532,8 +532,8 @@ void TCuda<AReal>::Rearrange(std::vector<TCudaMatrix<AReal>> &out, const std::ve
 /// thread per output element.
 //////////////////////////////////////////////////////////////////////////////////
 template<typename AFloat>
-void TCuda<AFloat>::Flatten(TCudaMatrix<AFloat> &A,
-                            const std::vector<TCudaMatrix<AFloat>> &B,
+void TCuda<AFloat>::Flatten(TCudaTensor<AFloat> &A,
+                            const std::vector<TCudaTensor<AFloat>> &B,
                             size_t size,
                             size_t nRows,
                             size_t nCols)
@@ -582,8 +582,8 @@ void TCuda<AFloat>::Flatten(TCudaMatrix<AFloat> &A,
 /// thread per input element.
 //////////////////////////////////////////////////////////////////////////////////
 template<typename AFloat>
-void TCuda<AFloat>::Deflatten(std::vector<TCudaMatrix<AFloat>> &A,
-                              const TCudaMatrix<AFloat> &B,
+void TCuda<AFloat>::Deflatten(std::vector<TCudaTensor<AFloat>> &A,
+                              const TCudaTensor<AFloat> &B,
                               size_t size,
                               size_t nRows,
                               size_t nCols)
