@@ -131,7 +131,7 @@ public:
    TCudaTensor(size_t bsize, size_t csize, size_t hwsize, int deviceIndx = 0, int streamIndx = 0) : 
      TCudaTensor( { csize, hwsize, bsize}, deviceIndx, streamIndx)
      {}
-   TCudaTensor(const TCudaMatrix<AFloat> & m); 
+   TCudaTensor(const TCudaMatrix<AFloat> & m, size_t dim = 2); 
 
 
    TCudaTensor(const TCudaTensor  &);

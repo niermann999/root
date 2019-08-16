@@ -57,7 +57,7 @@ public:
 
     using AFloat         = AReal;
     using Scalar_t       = AFloat;
-    
+ 
     using Matrix_t       = TCudaMatrix<AFloat>;
     using Tensor_t       = TCudaTensor<AFloat>;
     using DeviceBuffer_t = TCudaDeviceBuffer<AFloat>;

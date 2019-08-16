@@ -1085,10 +1085,10 @@ template class TTensorDataLoader<TensorInput, TCuda<float> >;
 template class TTensorDataLoader<TMVAInput_t, TCuda<float> >;
 template class TTensorDataLoader<TensorInput, TCuda<double >>;
 template class TTensorDataLoader<TMVAInput_t, TCuda<double> >;
-template class TTensorDataLoader<TensorInput, TCudnn<float> >;
-template class TTensorDataLoader<TMVAInput_t, TCudnn<float> >;
-template class TTensorDataLoader<TensorInput, TCudnn<double> >;
-template class TTensorDataLoader<TMVAInput_t, TCudnn<double> >;
+// template class TTensorDataLoader<TensorInput, TCudnn<float> >;
+// template class TTensorDataLoader<TMVAInput_t, TCudnn<float> >;
+// template class TTensorDataLoader<TensorInput, TCudnn<double> >;
+// template class TTensorDataLoader<TMVAInput_t, TCudnn<double> >;
 
 } // TMVA
 } // DNN

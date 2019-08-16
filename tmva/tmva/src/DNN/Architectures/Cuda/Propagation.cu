@@ -511,7 +511,7 @@ void TCuda<AFloat>::Reshape(TCudaMatrix<AFloat> &A, const TCudaMatrix<AFloat> &B
                                                         A.GetNrows(), A.GetNcols(), B.GetNrows(), B.GetNcols());
 }
 
-#if 0
+
 //______________________________________________________________________________
 template <typename AReal>
 void TCuda<AReal>::Rearrange(TCudaTensor<AReal> &out, const TCudaTensor<AReal> &in)
@@ -519,8 +519,7 @@ void TCuda<AReal>::Rearrange(TCudaTensor<AReal> &out, const TCudaTensor<AReal> &
    // B x T x D out --- T x B x D in*/
 
    // need to implement (usa CPu impl). Needs by RNN
-
-
+   out = in; 
 
    // size_t B = out.size();
    // size_t T = out[0].GetNrows();
@@ -541,7 +540,6 @@ void TCuda<AReal>::Rearrange(TCudaTensor<AReal> &out, const TCudaTensor<AReal> &
    // }
    return;
 }
-#endif
 
 //____________________________________________________________________________
 ////////////////////////////////////////////////////////////////////////////////

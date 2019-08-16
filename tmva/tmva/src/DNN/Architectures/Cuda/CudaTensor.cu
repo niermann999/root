@@ -131,7 +131,7 @@ TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor,
 //____________________________________________________________________________
 template<typename AFloat>
 TCudaTensor<AFloat>::TCudaTensor(const std::vector<size_t> & shape, int device, int streamIndx)
-    : fShape(shape), fStrides( shape.size()), fNDim( shape.size()), fElementBuffer(size, 0), fDevice(device), fStreamIndx(streamIndx),
+    : fShape(shape), fStrides( shape.size()), fNDim( shape.size()), fDevice(device), fStreamIndx(streamIndx),
       fTensorDescriptor(nullptr)
 {
    assert(fNDim == fShape.size());
@@ -155,6 +155,8 @@ TCudaTensor<AFloat>::TCudaTensor(const std::vector<size_t> & shape, int device, 
    fStrides[fNDim - 1] = 1;
    
    fSize = fStrides[0]*shape[0];
+
+   fElementBuffer = TCudaDeviceBuffer<AFloat>(fSize, 0);
    
    InitializeCuda();
 }
@@ -179,9 +181,9 @@ TCudaTensor<AFloat>::TCudaTensor(const AFloat * host_data, const std::vector<siz
 
 //____________________________________________________________________________
 template<typename AFloat>
-TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer, size_t ndim, 
+TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer,  
                                  const std::vector<size_t> & shape, int device, int streamIndx)
-    : fNDim(ndim), fElementBuffer(buffer), fShape(shape), fStrides( shape.size()), fDevice(device), 
+   : fNDim(shape.size()), fElementBuffer(buffer), fShape(shape), fStrides( shape.size()), fDevice(device), 
       fStreamIndx(streamIndx), fTensorDescriptor(nullptr)
 {
    assert(fNDim == fShape.size());
@@ -211,12 +213,30 @@ TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer, size_t ndim,
 //____________________________________________________________________________
 //FIXME: Go to shared_ptr implementation
 template <typename AFloat>
-TCudaTensor<AFloat>::TCudaTensor(const TCudaTensor<AFloat>& oldTensor) : TCudaTensor(oldTensor.fSize, oldTensor.fNDim, oldTensor.fShape, oldTensor.fDevice, oldTensor.fStreamIndx)
+TCudaTensor<AFloat>::TCudaTensor(const TCudaTensor<AFloat>& oldTensor) : TCudaTensor(oldTensor.fShape, oldTensor.fDevice, oldTensor.fStreamIndx)
 {
    // No deep copy
    fStrides       = oldTensor.fStrides;
    fElementBuffer = oldTensor.fElementBuffer;   
         
+   InitializeCuda();
+}
+
+//____________________________________________________________________________
+template <typename AFloat>
+TCudaTensor<AFloat>::TCudaTensor(const TCudaMatrix<AFloat>& matrix, size_t dim) :
+   TCudaTensor( matrix.GetDeviceBuffer(), {matrix.GetNrows(), matrix.GetNcols()})
+{
+   // No deep copy
+   fMemoryLayout = MemoryLayout::ColumnMajor;
+   fStrides       = { 1 , matrix.GetNrows() };  //CM layout
+
+   if (dim > 2) {
+      // change shape from (nrows,ncols) to (nrows,ncols,1,1)
+      fShape.insert( fShape.end(), dim-2, 1);
+      fStrides.insert(fStrides.begin(),dim-2,1);
+   }
+
    InitializeCuda();
 }
 
