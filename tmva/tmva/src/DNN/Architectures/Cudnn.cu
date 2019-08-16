@@ -14,7 +14,7 @@
 // for Double_t and Real_t floating point types.                 //
 ///////////////////////////////////////////////////////////////////
 
-#include "TMVA/DNN/Architectures/Cudnn.h"
+#include "TMVA/DNN/Architectures/TCudnn.h"
 /*#include "Cudnn/Propagation.cu"
 #include "Cudnn/Arithmetic.cu"
 #include "Cudnn/ActivationFunctions.cu"

@@ -65,13 +65,13 @@ TCudaTensor<AFloat>::TCudaTensor()
 //____________________________________________________________________________
 template<typename AFloat>
 TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor, 
-                                 size_t ndim, const std::vector<size_t> shape, 
+                                 const std::vector<size_t> & shape, 
                                  int device, int streamIndx)
-    : fShape(std::move(shape)), fNDim(ndim), fStrides(), 
+    : fShape(shape), fStrides( shape.size()), fNDim(shape.size()),  
       fElementBuffer(inputTensor.size()*inputTensor[0].GetNoElements(), 0),
       fDevice(device), fStreamIndx(streamIndx), fTensorDescriptor(nullptr)
 {
-   assert(fNDim == fShape.size());
+   //assert(fNDim == fShape.size());
    // Need a shape array with at least 4 entries for cuDNN tensors
    std::cout << "Dimensions :\t" << fNDim << std::endl;
    if (fNDim < 4) {
@@ -93,7 +93,7 @@ TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor,
    std::cout << "size\t" << fSize << std::endl;
    
    // Reduce shape size afterwards for loop and direct array access
-   fStrides = new size_t[fNDim];
+   //fStrides = new size_t[fNDim];
    for (int i = 0; i < fNDim - 1; ++i) {
        fStrides[i] = shape[i+1];
        for (int j = 0; j < i; j++) {
@@ -130,8 +130,8 @@ TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor,
 
 //____________________________________________________________________________
 template<typename AFloat>
-TCudaTensor<AFloat>::TCudaTensor(size_t size, size_t ndim, const std::vector<size_t> shape, int device, int streamIndx)
-    : fShape(std::move(shape)), fNDim(ndim), fSize(size), fElementBuffer(size, 0), fDevice(device), fStreamIndx(streamIndx),
+TCudaTensor<AFloat>::TCudaTensor(const std::vector<size_t> & shape, int device, int streamIndx)
+    : fShape(shape), fStrides( shape.size()), fNDim( shape.size()), fElementBuffer(size, 0), fDevice(device), fStreamIndx(streamIndx),
       fTensorDescriptor(nullptr)
 {
    assert(fNDim == fShape.size());
@@ -144,7 +144,7 @@ TCudaTensor<AFloat>::TCudaTensor(size_t size, size_t ndim, const std::vector<siz
    }
    
    // Reduce shape size afterwards for loop and direct array access
-   fStrides = new size_t[fNDim];
+   //fStrides = new size_t[fNDim];
    for (int i = 0; i < fNDim - 1; ++i) {
        fStrides[i] = shape[i+1];
        for (int j = 0; j < i; j++) {
@@ -154,15 +154,15 @@ TCudaTensor<AFloat>::TCudaTensor(size_t size, size_t ndim, const std::vector<siz
    // Last stride should be one for cudnn
    fStrides[fNDim - 1] = 1;
    
-   assert(fSize == fStrides[0]*shape[0]);
+   fSize = fStrides[0]*shape[0];
    
    InitializeCuda();
 }
 
 //____________________________________________________________________________
 template<typename AFloat>
-TCudaTensor<AFloat>::TCudaTensor(size_t size, const AFloat * host_data, size_t ndim, const std::vector<size_t> shape, int device, int streamIndx)
-    : TCudaTensor(size, ndim, shape, device, streamIndx)
+TCudaTensor<AFloat>::TCudaTensor(const AFloat * host_data, const std::vector<size_t> & shape, int device, int streamIndx)
+    : TCudaTensor(shape, device, streamIndx)
 {
    // do I need to allocate this buffer ???? 
    // is not a mem leak
@@ -180,8 +180,8 @@ TCudaTensor<AFloat>::TCudaTensor(size_t size, const AFloat * host_data, size_t n
 //____________________________________________________________________________
 template<typename AFloat>
 TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer, size_t ndim, 
-                                 const std::vector<size_t> shape, int device, int streamIndx)
-    : fNDim(ndim), fElementBuffer(buffer), fShape(std::move(shape)), fDevice(device), 
+                                 const std::vector<size_t> & shape, int device, int streamIndx)
+    : fNDim(ndim), fElementBuffer(buffer), fShape(shape), fStrides( shape.size()), fDevice(device), 
       fStreamIndx(streamIndx), fTensorDescriptor(nullptr)
 {
    assert(fNDim == fShape.size());
@@ -194,7 +194,6 @@ TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer, size_t ndim,
    }
    
    // Reduce shape size afterwards for loop and direct array access
-   fStrides = new size_t[fNDim];
    for (int i = 0; i < fNDim - 1; ++i) {
        fStrides[i] = shape[i+1];
        for (int j = 0; j < i; j++) {
@@ -225,8 +224,6 @@ TCudaTensor<AFloat>::TCudaTensor(const TCudaTensor<AFloat>& oldTensor) : TCudaTe
 template <typename AFloat>
 TCudaTensor<AFloat>::~TCudaTensor() 
 {
-   // Free resources of this instance
-   if (fStrides) delete[] fStrides;
    
    CUDNNCHECK(cudnnDestroyTensorDescriptor(fTensorDescriptor));
    
@@ -287,7 +284,7 @@ inline void TCudaTensor<AFloat>::InitializeCuda()
                                            fDataType,
                                            (int)fNDim,
                                            (int *)fShape.data(),
-                                           (int *)fStrides));
+                                           (int *)fStrides.data()));
    }
    
    size_t tensorSize;

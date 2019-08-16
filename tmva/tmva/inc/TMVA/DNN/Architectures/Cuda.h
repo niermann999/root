@@ -25,6 +25,7 @@
 #include "cuda.h"
 #include "Cuda/CudaBuffers.h"
 #include "Cuda/CudaMatrix.h"
+#include "Cuda/CudaTensor.h"
 #include "TMVA/DNN/DataLoader.h"
 #include <utility>
 #include <vector>
@@ -36,8 +37,8 @@ namespace TMVA
 namespace DNN
 {
 
- struct DummyFilterDescriptor {};
- struct DummyConvolutionDescriptor {}; 
+ struct CudaFilterDescriptor {};
+ struct CudaConvolutionDescriptor {}; 
 
 
 /** The TCuda architecture class.
@@ -58,12 +59,12 @@ public:
     using Scalar_t       = AFloat;
     
     using Matrix_t       = TCudaMatrix<AFloat>;
-    using Tensor_t       = TCudaTensor<AFloat>>;
+    using Tensor_t       = TCudaTensor<AFloat>;
     using DeviceBuffer_t = TCudaDeviceBuffer<AFloat>;
     using HostBuffer_t   = TCudaHostBuffer<AFloat>;
 
-    using ConvolutionDescriptor_t = DummyConvolutionDescriptor;
-    using FilterDescriptor_t = DummyFilterDescriptor; 
+    using ConvolutionDescriptor_t = CudaConvolutionDescriptor;
+    using FilterDescriptor_t = CudaFilterDescriptor; 
 
 
 #if 0 // old definitions
@@ -546,9 +547,9 @@ public:
    static void AdamUpdateSecondMom(TCudaMatrix<AFloat> & A, const TCudaMatrix<AFloat> & B, AFloat beta);
 
 #endif
-
+/////////////////////////////////////////////////////////////////////////////////////////
    // new definitions
-
+//////////////////////////////////////////////////////////////////////////////////////////
 
       //____________________________________________________________________________
       //
@@ -1056,6 +1057,16 @@ public:
       // printing of tensor
    static void PrintTensor( const Tensor_t & A, const std::string name = "tensor");
 
+
+
+   ///////////////////////////////////////////////////////////////////////////////
+   /// extra functions defined only for CPU architecture !!!
+   //////////////////////////////////////////////////////////////////////////////
+   
+   /** Sum rows of (m x n) matrix \p A and write the results into the first
+   * m elements in \p B.
+   */
+   static void SumRows(Matrix_t & B, const Matrix_t & A);
 
 
 };
