@@ -1055,7 +1055,7 @@ public:
    static void AdamUpdateSecondMom(Matrix_t & A, const Matrix_t & B, Scalar_t beta);
 
       // printing of tensor
-   static void PrintTensor( const Tensor_t & A, const std::string name = "tensor");
+   static void PrintTensor( const Tensor_t & A, const std::string name = "tensor") {}
 
 
 

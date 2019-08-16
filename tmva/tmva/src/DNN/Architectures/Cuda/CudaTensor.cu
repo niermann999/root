@@ -65,7 +65,8 @@ TCudaTensor<AFloat>::TCudaTensor()
 //____________________________________________________________________________
 template<typename AFloat>
 TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor, 
-                                 const std::vector<size_t> & shape, 
+                                 const std::vector<size_t> & shape,
+                                 TCudaTensor::MemoryLayout layout,
                                  int device, int streamIndx)
     : fShape(shape), fStrides( shape.size()), fNDim(shape.size()),  
       fElementBuffer(inputTensor.size()*inputTensor[0].GetNoElements(), 0),
@@ -130,7 +131,9 @@ TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor,
 
 //____________________________________________________________________________
 template<typename AFloat>
-TCudaTensor<AFloat>::TCudaTensor(const std::vector<size_t> & shape, int device, int streamIndx)
+TCudaTensor<AFloat>::TCudaTensor(const std::vector<size_t> & shape,
+                                 TCudaTensor::MemoryLayout layout,
+                                 int device, int streamIndx)
     : fShape(shape), fStrides( shape.size()), fNDim( shape.size()), fDevice(device), fStreamIndx(streamIndx),
       fTensorDescriptor(nullptr)
 {
@@ -163,8 +166,10 @@ TCudaTensor<AFloat>::TCudaTensor(const std::vector<size_t> & shape, int device, 
 
 //____________________________________________________________________________
 template<typename AFloat>
-TCudaTensor<AFloat>::TCudaTensor(const AFloat * host_data, const std::vector<size_t> & shape, int device, int streamIndx)
-    : TCudaTensor(shape, device, streamIndx)
+TCudaTensor<AFloat>::TCudaTensor(const AFloat * host_data, const std::vector<size_t> & shape,
+                                 TCudaTensor::MemoryLayout layout,
+                                 int device, int streamIndx)
+   : TCudaTensor(shape, layout, device, streamIndx)
 {
    // do I need to allocate this buffer ???? 
    // is not a mem leak
@@ -182,9 +187,11 @@ TCudaTensor<AFloat>::TCudaTensor(const AFloat * host_data, const std::vector<siz
 //____________________________________________________________________________
 template<typename AFloat>
 TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer,  
-                                 const std::vector<size_t> & shape, int device, int streamIndx)
+                                 const std::vector<size_t> & shape,
+                                 TMVA::Experimental::MemoryLayout layout,
+                                 int device, int streamIndx)
    : fNDim(shape.size()), fElementBuffer(buffer), fShape(shape), fStrides( shape.size()), fDevice(device), 
-      fStreamIndx(streamIndx), fTensorDescriptor(nullptr)
+     fStreamIndx(streamIndx), fTensorDescriptor(nullptr), fMemoryLayout(layout)
 {
    assert(fNDim == fShape.size());
    // Need a shape array with at least 4 entries for cuDNN tensors
@@ -213,7 +220,8 @@ TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer,
 //____________________________________________________________________________
 //FIXME: Go to shared_ptr implementation
 template <typename AFloat>
-TCudaTensor<AFloat>::TCudaTensor(const TCudaTensor<AFloat>& oldTensor) : TCudaTensor(oldTensor.fShape, oldTensor.fDevice, oldTensor.fStreamIndx)
+TCudaTensor<AFloat>::TCudaTensor(const TCudaTensor<AFloat>& oldTensor) :
+   TCudaTensor(oldTensor.fShape, oldTensor.fMemoryLayout, oldTensor.fDevice, oldTensor.fStreamIndx)
 {
    // No deep copy
    fStrides       = oldTensor.fStrides;

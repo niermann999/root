@@ -40,23 +40,28 @@
 
 namespace TMVA {
 
-namespace DNN {
 
-/**
- * Function to handle the status output of cuDNN function calls. See also
- * CUDACHECK in CudaMatrix.h.
- */
-inline void cudnnError(cudnnStatus_t status, const char *file, int line, bool abort=true);
 
 #ifndef TMVA_RTENSOR
+
+namespace Experimental { 
 /// Memory layout type (copy from RTensor.hxx)
 enum class MemoryLayout : uint8_t {
    RowMajor = 0x01,
    ColumnMajor = 0x02
 };
-#else
-using MemoryLayout = TMVA::Experimental::MemoryLayout; 
+}
 #endif
+
+namespace DNN {
+
+using MemoryLayout = TMVA::Experimental::MemoryLayout; 
+
+ /**
+ * Function to handle the status output of cuDNN function calls. See also
+ * CUDACHECK in CudaMatrix.h.
+ */
+inline void cudnnError(cudnnStatus_t status, const char *file, int line, bool abort=true);
 
 //____________________________________________________________________________
 //
@@ -74,7 +79,7 @@ class TCudaTensor
 public:
 
    using Shape_t = std::vector<size_t>;
-   using MemoryLayout = TMVA::DNN::MemoryLayout; 
+   using MemoryLayout = TMVA::Experimental::MemoryLayout; 
   
 
 private:
@@ -102,7 +107,7 @@ private:
    size_t              fSize;             ///< No. of elements
    int                 fDevice;           ///< Device associated with current tensor instance
    int                 fStreamIndx;           ///< Cuda stream associated with current instance
-          
+
    cudnnTensorDescriptor_t   fTensorDescriptor;
    TCudaDeviceBuffer<AFloat> fElementBuffer;
 
@@ -110,27 +115,49 @@ private:
 
 public:
 
-  
 
    //static AFloat * GetOnes() {return fOnes;}
 
    TCudaTensor();
+   // not sure if this one is needed
    TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor,
                const std::vector<size_t> & shape,
+               MemoryLayout memlayout = MemoryLayout::ColumnMajor,
                int deviceIndx = 0, 
                int streamIndx = 0);
    TCudaTensor(const AFloat * data, 
                const std::vector<size_t> & shape,
+               MemoryLayout memlayout = MemoryLayout::ColumnMajor,
                int deviceIndx = 0, int streamIndx = 0);
    TCudaTensor(TCudaDeviceBuffer<AFloat> buffer, 
                const std::vector<size_t> & shape,
+               MemoryLayout memlayout = MemoryLayout::ColumnMajor,
                int deviceIndx = 0, int streamIndx = 0);
    TCudaTensor(const std::vector<size_t> & shape,
+               MemoryLayout memlayout = MemoryLayout::ColumnMajor,
                int deviceIndx = 0, int streamIndx = 0);
 
-   TCudaTensor(size_t bsize, size_t csize, size_t hwsize, int deviceIndx = 0, int streamIndx = 0) : 
-     TCudaTensor( { csize, hwsize, bsize}, deviceIndx, streamIndx)
+   TCudaTensor(size_t bsize, size_t csize, size_t hwsize, MemoryLayout memlayout = MemoryLayout::ColumnMajor,  int deviceIndx = 0, int streamIndx = 0) : 
+
+      TCudaTensor( { bsize, hwsize, csize }, memlayout, deviceIndx, streamIndx)
+     {
+        if (fMemoryLayout == MemoryLayout::ColumnMajor)
+           (*this) = TCudaTensor(fElementBuffer,  { csize, hwsize, bsize}, memlayout, deviceIndx, streamIndx);
+     }
+
+   TCudaTensor(size_t bsize, size_t csize, size_t hsize, size_t wsize, MemoryLayout memlayout = MemoryLayout::ColumnMajor,  int deviceIndx = 0, int streamIndx = 0) : 
+
+      TCudaTensor( { bsize, hsize, wsize, csize}, memlayout, deviceIndx, streamIndx)
+     {
+        if (memlayout == MemoryLayout::ColumnMajor)
+           *this =  TCudaTensor(fElementBuffer, { csize, hsize, wsize, bsize}, memlayout, deviceIndx, streamIndx);
+     }
+
+   TCudaTensor(size_t n, size_t m, MemoryLayout memlayout = MemoryLayout::ColumnMajor,  int deviceIndx = 0, int streamIndx = 0) : 
+      //   TCudaTensor( {n,m}, memlayout, deviceIndx, streamIndx) :
+      TCudaTensor( { n, m}, memlayout, deviceIndx, streamIndx)
      {}
+
    TCudaTensor(const TCudaMatrix<AFloat> & m, size_t dim = 2); 
 
 
@@ -170,6 +197,8 @@ public:
 
    const AFloat * GetDataPointer() const {return fElementBuffer;}
    AFloat       * GetDataPointer()       {return fElementBuffer;}
+   const AFloat * GetData() const {return fElementBuffer;}
+   AFloat       * GetData()       {return fElementBuffer;}
 
    const AFloat * GetDataPointerAt(size_t i ) const {
       return (const_cast<TCudaDeviceBuffer<AFloat>&>(fElementBuffer)).GetSubBuffer(i * GetFirstStride(), GetFirstStride() ); }
@@ -209,18 +238,31 @@ public:
       fElementBuffer.CopyFrom(hostBuffer);
    }
 
+   // assume  always NHWC for memory representation
    // for size=3 tensors used so far in DNN
    size_t GetFirstSize() const { 
       return (GetLayout() == MemoryLayout::ColumnMajor ) ? fShape.back() : fShape.front(); }  // CM order
    size_t GetFirstStride() const { 
       return (GetLayout() == MemoryLayout::ColumnMajor ) ?  fStrides.back() : fStrides.front();  } // CM order
-   size_t GetCSize() const { return fShape[0];}
-   size_t GetHSize() const { return fShape[0];}
-   size_t GetWSize() const { return fShape[1];}
+   size_t GetCSize() const {    
+      return (GetLayout() == MemoryLayout::ColumnMajor ) ? fShape.front() : fShape.back() ;
+   }
+   size_t GetHSize() const {
+      if  (fShape.size() == 2) return fShape[0];  
+      if  (fShape.size() == 3) return (GetLayout() == MemoryLayout::ColumnMajor ) ? fShape[0] : fShape[2] ;// same as C
+      if  (fShape.size() == 4) return (GetLayout() == MemoryLayout::ColumnMajor ) ? fShape[2] : fShape[1] ;
+      return 0; 
+   }
+   size_t GetWSize() const { 
+      if  (fShape.size() == 2) return fShape[1];  
+      if  (fShape.size() == 3) return fShape[1]; //(GetLayout() == MemoryLayout::ColumnMajor ) ? fShape[1] : fShape[2] ; 
+      if  (fShape.size() == 4) return (GetLayout() == MemoryLayout::ColumnMajor ) ? fShape[1] : fShape[2] ;
+      return 0; 
+}
 
-   // for backward compatibility (assume column-major order
-   size_t GetNrows() const { return fStrides.back(); }
-   size_t GetNcols() const { return fShape.back(); }
+   // for backward compatibility (assume column-major 
+   size_t GetNrows() const { return (GetLayout() == MemoryLayout::ColumnMajor ) ? fStrides.back() : fStrides.front();}
+   size_t GetNcols() const { return (GetLayout() == MemoryLayout::ColumnMajor ) ? fShape.front() : fShape.back(); }
 
 
       // Matrix conversion for tensors of shape 2
@@ -252,6 +294,26 @@ public:
 
       return TCudaTensor<AFloat>((const_cast<TCudaDeviceBuffer<AFloat>&>(fElementBuffer)).GetSubBuffer(offset, buffsize), sliced_shape); //, GetLayout());
    }
+
+
+   // element access ( for debugging)
+   TCudaDeviceReference<AFloat> operator()(size_t i, size_t j) const
+   {
+      assert( fNdim == 2 || (fNdim == 3 && GetFirstSize() == 1) );
+      AFloat * elementPointer = fElementBuffer;
+      elementPointer += j * GetNrows() + i;
+      return TCudaDeviceReference<AFloat>(elementPointer);
+   }
+   // element access ( for debugging)
+   TCudaDeviceReference<AFloat> operator()(size_t k, size_t i, size_t j) const
+   {
+      // k is B, i is C, j is HW : 
+      assert( fNdim == 3 );
+      AFloat * elementPointer = fElementBuffer;
+      elementPointer += k * GetFirstSize() + i * GetNrows() + j; 
+      return TCudaDeviceReference<AFloat>(elementPointer);
+   }
+  
 
 
 private:

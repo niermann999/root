@@ -7,7 +7,7 @@
 #include <type_traits>
 #include "stdlib.h"
 #include "TRandom.h"
-#include "TMVA/DNN/Architectures/Reference.h"
+//#include "TMVA/DNN/Architectures/Reference.h"
 #include "TMVA/DNN/Functions.h"
 #include "TMVA/DNN/Net.h"
 #include "TMVA/DNN/DeepNet.h"
