@@ -72,8 +72,8 @@ TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor,
       fDevice(device), fStreamIndx(streamIndx), fTensorDescriptor(nullptr)
 {
    assert(fNDim == fShape.size());
+   
    // Need a shape array with at least 4 entries for cuDNN tensors
-   std::cout << "Dimensions :\t" << fNDim << std::endl;
    if (fNDim < 4) {
        std::puts("No matching cuDNN tensor description for given input dimension(s). "
                  "Inputs should be given as: batch size, no. channels, image dimensions. "
@@ -87,11 +87,6 @@ TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor,
    
    fSize = inputDepth * inputHeight * inputWidth;
    
-   std::cout << "depth\t" << inputDepth << std::endl;
-   std::cout << "height\t" << inputHeight << std::endl;
-   std::cout << "width\t" << inputWidth << std::endl;
-   std::cout << "size\t" << fSize << std::endl;
-   
    // Reduce shape size afterwards for loop and direct array access
    fStrides = new size_t[fNDim];
    for (int i = 0; i < fNDim - 1; ++i) {
@@ -103,14 +98,6 @@ TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor,
    // Last stride should be one for cudnn
    fStrides[fNDim - 1] = 1;
    
-   std::cout << "Shape:" << std::endl;
-   for (int i = 0; i < fNDim; ++i) {
-      std::cout << fShape[i] << std::endl;
-   }
-   std::cout << "Strides:" << std::endl;
-   for (int i = 0; i < fNDim; ++i) {
-      std::cout << fStrides[i] << std::endl;
-   }
    InitializeCuda();
       
    //fElementBuffer = TCudaDeviceBuffer<AFloat>(fSize);
@@ -126,6 +113,7 @@ TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor,
    }
 
    fElementBuffer.CopyFrom(hostBuffer);
+   assert(fSize == fElementBuffer.GetSize());
 }
 
 //____________________________________________________________________________
@@ -155,6 +143,7 @@ TCudaTensor<AFloat>::TCudaTensor(size_t size, size_t ndim, const std::vector<siz
    fStrides[fNDim - 1] = 1;
    
    assert(fSize == fStrides[0]*shape[0]);
+   assert(fSize == fElementBuffer.GetSize());
    
    InitializeCuda();
 }
@@ -166,15 +155,17 @@ TCudaTensor<AFloat>::TCudaTensor(size_t size, const AFloat * host_data, size_t n
 {
    // do I need to allocate this buffer ???? 
    // is not a mem leak
-   // AFloat * buffer = new AFloat[fSize];
+   //AFloat * buffer = new AFloat[fSize];
    // size_t index = 0;
    // for (size_t j = 0; j < fSize; ++j) {
    //       buffer[j] = static_cast<AFloat>(host_data[j]);
    //    }
    // }
-
+   
    cudaMemcpy(fElementBuffer, host_data, fSize * sizeof(AFloat),
               cudaMemcpyHostToDevice);
+              
+   assert(fSize == fElementBuffer.GetSize());
 }
 
 //____________________________________________________________________________
@@ -206,19 +197,27 @@ TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer, size_t ndim,
    
    fSize = fStrides[0]*shape[0];
    
-   InitializeCuda();  
+   InitializeCuda();
+   assert(fSize == fElementBuffer.GetSize());
 }
 
 //____________________________________________________________________________
 //FIXME: Go to shared_ptr implementation
 template <typename AFloat>
-TCudaTensor<AFloat>::TCudaTensor(const TCudaTensor<AFloat>& oldTensor) : TCudaTensor(oldTensor.fSize, oldTensor.fNDim, oldTensor.fShape, oldTensor.fDevice, oldTensor.fStreamIndx)
+TCudaTensor<AFloat>::TCudaTensor(const TCudaTensor<AFloat>& oldTensor)
 {
    // No deep copy
+   fSize          = oldTensor.fSize;
+   fNDim          = oldTensor.fNDim;
+   fShape         = oldTensor.fShape;
+   fDevice        = oldTensor.fDevice;
+   fStreamIndx    = oldTensor.fStreamIndx;
    fStrides       = oldTensor.fStrides;
    fElementBuffer = oldTensor.fElementBuffer;   
-        
+
    InitializeCuda();
+   
+   assert(fSize == fElementBuffer.GetSize());
 }
 
 //____________________________________________________________________________
@@ -231,7 +230,7 @@ TCudaTensor<AFloat>::~TCudaTensor()
    CUDNNCHECK(cudnnDestroyTensorDescriptor(fTensorDescriptor));
    
    // When all tensors in a streamIndx are destroyed, release cudnn resources 
-   if (--fInstances[fStreamIndx] <= 0) CUDNNCHECK(cudnnDestroy(fCudnnHandle[fStreamIndx]));
+   if (--(fInstances[fStreamIndx]) <= 0 ) CUDNNCHECK(cudnnDestroy(fCudnnHandle[fStreamIndx]));
 }
 
 //____________________________________________________________________________

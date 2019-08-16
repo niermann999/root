@@ -19,7 +19,7 @@
 #ifndef TMVA_DNN_ARCHITECTURES_CUDA_CUDATENSOR
 #define TMVA_DNN_ARCHITECTURES_CUDA_CUDATENSOR
 
-//#include "cuda.h"
+#include "cuda.h"
 #include "cudnn.h"
 /*#include "cuda_runtime.h"
 #include "cublas_v2.h"
@@ -29,6 +29,7 @@
 
 #include <vector>
 #include <cstring>
+#include <iostream>
 
 #include "TMatrixT.h"
 #include "CudaBuffers.h"
@@ -86,7 +87,7 @@ private:
    size_t              fNDim;             ///< Dimension of the tensor (first dimension is the batch size, second is the no. channels)
    size_t              fSize;             ///< No. of elements
    int                 fDevice;           ///< Device associated with current tensor instance
-   int                 fStreamIndx;           ///< Cuda stream associated with current instance
+   int                 fStreamIndx;       ///< Cuda stream associated with current instance
           
    cudnnTensorDescriptor_t   fTensorDescriptor;
    TCudaDeviceBuffer<AFloat> fElementBuffer;
@@ -110,7 +111,7 @@ public:
                const std::vector<size_t> shape,
                int deviceIndx = 0, int streamIndx = 0);
 
-   TCudaTensor(const TCudaTensor  &);
+   TCudaTensor(const TCudaTensor  &);// = default;
    TCudaTensor(      TCudaTensor &&) = default;
    TCudaTensor & operator=(const TCudaTensor  &) = default;
    TCudaTensor & operator=(      TCudaTensor &&) = default;
@@ -153,10 +154,52 @@ public:
     *  class. Note that access is synchronous end enforces device synchronization
     *  on all streams. Only used for testing. */
    //TCudaDeviceReference<AFloat> operator()(size_t i, size_t j) const;
+   
+   // FIXME: Change to on device division and reduction
+   bool isEqual (TCudaTensor<AFloat> & other) {
+      if (fSize != other.GetSize()) return false;
+      
+      /*TCudaHostBuffer<AFloat> hostBufferThis(fSize);
+      TCudaHostBuffer<AFloat> hostBufferOther(fSize);
+      fElementBuffer.CopyTo(hostBufferThis);
+      other.GetDeviceBuffer().CopyTo(hostBufferOther);*/
+      
+      AFloat * hostBufferThis = new AFloat[fSize];
+      AFloat * hostBufferOther = new AFloat[fSize]; 
+      cudaMemcpy(hostBufferThis, fElementBuffer, fSize * sizeof(AFloat),
+                 cudaMemcpyDeviceToHost);
+      cudaMemcpy(hostBufferOther, other.GetDeviceBuffer(), fSize * sizeof(AFloat),
+                 cudaMemcpyDeviceToHost);
+      
+      for (size_t i = 0; i < fSize; i++) {
+         if (hostBufferThis[i] != hostBufferOther[i]) return false;
+      }
+      return true; 
+   }
+   
+   bool isEqual (const AFloat * hostBufferOther, size_t otherSize) {
+      if (fSize != otherSize) return false;
+      
+      /*TCudaHostBuffer<AFloat> hostBufferThis (fSize);
+      fElementBuffer.CopyTo(hostBufferThis);*/
+      AFloat * hostBufferThis = new AFloat[fSize];
+      cudaMemcpy(hostBufferThis, fElementBuffer, fSize * sizeof(AFloat),
+                 cudaMemcpyDeviceToHost);
+      
+      for (size_t i = 0; i < fSize; i++) {
+         if (hostBufferThis[i] != hostBufferOther[i]) return false;
+      }
+      return true; 
+   }
 
-   void Print() const { 
-      //TMatrixT<AFloat> mat(*this); 
-      //mat.Print(); 
+   void Print() const {
+      /*TCudaBuffer<AFloat> hostBuffer (fSize);
+      fElementBuffer.CopyTo(hostBuffer);*/
+      AFloat * hostBuffer = new AFloat[fSize]; 
+      cudaMemcpy(hostBuffer, fElementBuffer, fSize * sizeof(AFloat),
+                 cudaMemcpyDeviceToHost);
+   
+      for (size_t i = 0; i < fSize; i++) std::cout << hostBuffer[i] << std::endl;
    }
 
    void Zero() {

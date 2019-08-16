@@ -17,7 +17,7 @@ set(Libraries Core MathCore Matrix TMVA)
 #--- CUDA tests. ---------------------------
 if (CUDA_FOUND AND tmva-gpu)
 
-set(DNN_CUDA_LIBRARIES ${CUDA_CUBLAS_LIBRARIES})
+set(DNN_CUDA_LIBRARIES ${CUDA_CUBLAS_LIBRARIES} /usr/local/cuda/lib64/libcudnn.so)
 
 CUDA_ADD_EXECUTABLE(testIm2ColCuda TestIm2ColCuda.cxx)
 target_link_libraries(testIm2ColCuda ${Libraries} ${DNN_CUDA_LIBRARIES})
@@ -42,6 +42,10 @@ ROOT_ADD_TEST(TMVA-DNN-CNN-RotateWeightsCuda COMMAND testRotateWeightsCuda)
 CUDA_ADD_EXECUTABLE(testConvBackpropagationCuda TestConvBackpropagationCuda.cxx)
 target_link_libraries(testConvBackpropagationCuda ${Libraries} ${DNN_CUDA_LIBRARIES})
 ROOT_ADD_TEST(TMVA-DNN-CNN-ConvBackpropagationCuda COMMAND testConvBackpropagationCuda)
+
+CUDA_ADD_EXECUTABLE(testConvLayerCudnn TestConvLayerCudnn.cxx)
+target_link_libraries(testConvLayerCudnn ${Libraries} ${DNN_CUDA_LIBRARIES})
+ROOT_ADD_TEST(TMVA-DNN-CNN-ConvLayerCudnn COMMAND testConvLayerCudnn)
 
 include_directories(${ROOT_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
 

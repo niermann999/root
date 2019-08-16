@@ -126,33 +126,39 @@ const std::vector<AMatrix_t> & B);*/
                                   const TCudaTensor<AFloat> & A);*/
 
    static void Activation(TCudaTensor<AFloat> & B, EActivationFunction activFunct,
-                          const double coefRelu = 0.0, const AFloat alpha = 1, const AFloat beta = 1);
+                          const double coef = 0.0, const AFloat alpha = 1, const AFloat beta = 1);
                     
-   static void Relu(TCudaTensor<AFloat> & B, const double coefRelu = 0.0, 
+   static void Relu(TCudaTensor<AFloat> & B, const double coef = 0.0, 
                     const AFloat alpha = 1, const AFloat beta = 1);
                     
    /*static void ReluDerivative(TCudaTensor<AFloat> & B,
                               const TCudaTensor<AFloat> & A);*/
 
-   static void Sigmoid(TCudaTensor<AFloat> & B, const double coefRelu = 0.0, 
+   static void Sigmoid(TCudaTensor<AFloat> & B, const double coef = 0.0, 
                     const AFloat alpha = 1, const AFloat beta = 1);
    /*static void SigmoidDerivative(TCudaTensor<AFloat> & B,
                                  const TCudaTensor<AFloat> & A);*/
 
-   static void Tanh(TCudaTensor<AFloat> & B, const double coefRelu = 0.0, 
+   static void Tanh(TCudaTensor<AFloat> & B, const double coef = 0.0, 
                     const AFloat alpha = 1, const AFloat beta = 1);
    /*static void TanhDerivative(TCudaTensor<AFloat> & B,
                               const TCudaTensor<AFloat> & A);*/
 
-   //static void SymmetricRelu(TCudaTensor<AFloat> & B);
+   // Stub function: Activation is not implemented in cuDNN
+   static void SymmetricRelu(TCudaTensor<AFloat> & B, const double coef = 0.0, 
+                    const AFloat alpha = 1, const AFloat beta = 1);
    /*static void SymmetricReluDerivative(TCudaTensor<AFloat> & B,
                                        const TCudaTensor<AFloat> & A);*/
 
-   //static void SoftSign(TCudaTensor<AFloat> & B);
+   // Stub function: Activation is not implemented in cuDNN
+   static void SoftSign(TCudaTensor<AFloat> & B, const double coef = 0.0, 
+                    const AFloat alpha = 1, const AFloat beta = 1);
    /*static void SoftSignDerivative(TCudaTensor<AFloat> & B,
                                   const TCudaTensor<AFloat> & A);*/
 
-   //static void Gauss(TCudaTensor<AFloat> & B);
+   // Stub function: Activation is not implemented in cuDNN
+   static void Gauss(TCudaTensor<AFloat> & B, const double coef = 0.0, 
+                    const AFloat alpha = 1, const AFloat beta = 1);
    /*static void GaussDerivative(TCudaTensor<AFloat> & B,
                                const TCudaTensor<AFloat> & A);*/
    ///@}
