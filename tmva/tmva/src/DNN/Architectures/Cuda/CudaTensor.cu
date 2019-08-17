@@ -139,12 +139,12 @@ TCudaTensor<AFloat>::TCudaTensor(const std::vector<size_t> & shape,
 {
    assert(fNDim == fShape.size());
    // Need a shape array with at least 4 entries for cuDNN tensors
-   if (fNDim < 4) {
-       std::puts("No matching cuDNN tensor description for given input dimension(s). "
-                 "Inputs should be given as: batch size, no. channels, image dimensions. "
-                 "Unused dimensions should be set to one.");
-       exit(EXIT_FAILURE);
-   }
+//    if (fNDim < 4) {
+//        std::puts("No matching cuDNN tensor description for given input dimension(s). "
+//                  "Inputs should be given as: batch size, no. channels, image dimensions. "
+//                  "Unused dimensions should be set to one.");
+// //       exit(EXIT_FAILURE);
+//   }
    
    // Reduce shape size afterwards for loop and direct array access
    //fStrides = new size_t[fNDim];
@@ -195,12 +195,12 @@ TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer,
 {
    assert(fNDim == fShape.size());
    // Need a shape array with at least 4 entries for cuDNN tensors
-   if (shape.size() < 4) {
-       std::puts("No matching cuDNN tensor description for given input dimension(s). "
-                 "Inputs should be given as: batch size, no. channels, image dimensions. "
-                 "Unused dimensions should be set to one.");
-       exit(EXIT_FAILURE);
-   }
+   // if (shape.size() < 4) {
+   //     std::puts("No matching cuDNN tensor description for given input dimension(s). "
+   //               "Inputs should be given as: batch size, no. channels, image dimensions. "
+   //               "Unused dimensions should be set to one.");
+   //     //     exit(EXIT_FAILURE);
+   // }
    
    // Reduce shape size afterwards for loop and direct array access
    for (int i = 0; i < fNDim - 1; ++i) {
@@ -238,6 +238,7 @@ TCudaTensor<AFloat>::TCudaTensor(const TCudaMatrix<AFloat>& matrix, size_t dim) 
    // No deep copy
    fMemoryLayout = MemoryLayout::ColumnMajor;
    fStrides       = { 1 , matrix.GetNrows() };  //CM layout
+   fNDim = dim; 
 
    if (dim > 2) {
       // change shape from (nrows,ncols) to (nrows,ncols,1,1)
@@ -252,17 +253,21 @@ TCudaTensor<AFloat>::TCudaTensor(const TCudaMatrix<AFloat>& matrix, size_t dim) 
 template <typename AFloat>
 TCudaTensor<AFloat>::~TCudaTensor() 
 {
-   
+#if USE_CUDNN
    CUDNNCHECK(cudnnDestroyTensorDescriptor(fTensorDescriptor));
-   
+
    // When all tensors in a streamIndx are destroyed, release cudnn resources 
    if (--fInstances[fStreamIndx] <= 0) CUDNNCHECK(cudnnDestroy(fCudnnHandle[fStreamIndx]));
+#endif
+
 }
 
 //____________________________________________________________________________
 template <typename AFloat>
 inline void TCudaTensor<AFloat>::InitializeCuda()
 {
+#if USE_CUDNN
+   
    // Also check whether a new streamIndx has been opened
    if (fInstances.size() - 1 < fStreamIndx) {
       // If need to resize once, need probably to resize more often
@@ -318,6 +323,7 @@ inline void TCudaTensor<AFloat>::InitializeCuda()
    size_t tensorSize;
    CUDNNCHECK(cudnnGetTensorSizeInBytes(fTensorDescriptor, &tensorSize));
    assert(fSize == tensorSize/sizeof(AFloat));
+#endif
 }
 
 //____________________________________________________________________________

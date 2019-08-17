@@ -299,7 +299,7 @@ public:
    // element access ( for debugging)
    TCudaDeviceReference<AFloat> operator()(size_t i, size_t j) const
    {
-      assert( fNdim == 2 || (fNdim == 3 && GetFirstSize() == 1) );
+      assert( fNDim == 2 || (fNDim == 3 && GetFirstSize() == 1) );
       AFloat * elementPointer = fElementBuffer;
       elementPointer += j * GetNrows() + i;
       return TCudaDeviceReference<AFloat>(elementPointer);
@@ -308,7 +308,7 @@ public:
    TCudaDeviceReference<AFloat> operator()(size_t k, size_t i, size_t j) const
    {
       // k is B, i is C, j is HW : 
-      assert( fNdim == 3 );
+      assert( fNDim == 3 );
       AFloat * elementPointer = fElementBuffer;
       elementPointer += k * GetFirstSize() + i * GetNrows() + j; 
       return TCudaDeviceReference<AFloat>(elementPointer);
