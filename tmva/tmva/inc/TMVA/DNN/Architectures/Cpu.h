@@ -19,6 +19,8 @@
 #define TMVA_DNN_ARCHITECTURES_CPU
 
 #include "TMVA/DNN/Functions.h"
+#include "TMVA/DNN/CNN/ContextHandles.h"
+//#include "TMVA/DNN/CNN/Descriptors.h"
 #include "TMVA/DNN/CNN/ConvLayer.h"
 
 #include "Cpu/CpuBuffer.h"
@@ -32,7 +34,7 @@ namespace TMVA
 namespace DNN
 {
    //class EActivationFunction;
-
+ struct DummyActivationDescriptor {};
  struct DummyFilterDescriptor {};
  struct DummyConvolutionDescriptor {}; 
 
@@ -56,10 +58,32 @@ public:
    using HostBuffer_t   = TCpuBuffer<AReal>;
    using DeviceBuffer_t = TCpuBuffer<AReal>;
 
+   using ActivationDescriptor_t  = DummyActivationDescriptor;
    using ConvolutionDescriptor_t = DummyConvolutionDescriptor;
-   using FilterDescriptor_t = DummyFilterDescriptor; 
+   using FilterDescriptor_t      = DummyFilterDescriptor;
+   /*using DropoutDescriptor_t     = DummyDropoutDescriptor;
+   using FilterDescriptor_t      = DummyFilterDescriptor;
+   using OpTensorDescriptor_t    = DummyOpTensorDescriptor;
+   using PoolingDescriptor_t     = DummyPoolingDescriptor;
+   using ReductionDescriptor_t   = DummyReduceTensorDescriptor;*/
 
 
+   //____________________________________________________________________________
+   //
+   // Architecture Initialization
+   //____________________________________________________________________________
+   
+   template<typename Layer_t>
+   static void InitializeCNNDescriptors(CNN::TDescriptors<Layer_t> &  descriptors) {
+      InitializeDescriptor(descriptors.LayerDescriptor);
+      InitializeDescriptor(descriptors.HelperDescriptor);
+      InitializeDescriptor(descriptors.WeightsDescriptor);
+   }
+   
+   static void InitializeDescriptor(ActivationDescriptor_t &  activationDescr);
+   static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr);
+   static void InitializeDescriptor(FilterDescriptor_t &      filterDescr);
+   
    // // Utility function to convert from a Matrix to a Tensor
    // static Tensor_t  MatrixToTensor(Matrix_t & A) { 
    //    return Tensor_t(A.GetRawDataPointer(), Shape_t({A.GetNrows(), A.GetNcols() }), RTensor::MemoryLayout::ColumnMajor);

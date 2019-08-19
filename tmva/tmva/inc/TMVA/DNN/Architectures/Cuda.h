@@ -19,6 +19,8 @@
 #define TMVA_DNN_ARCHITECTURES_CUDA
 
 #include "TMVA/DNN/Functions.h"
+#include "TMVA/DNN/CNN/ContextHandles.h"
+//#include "TMVA/DNN/CNN/Descriptors.h"
 #include "TMVA/DNN/CNN/ConvLayer.h"
 
 
@@ -36,7 +38,7 @@ namespace TMVA
 {
 namespace DNN
 {
-
+ struct CudaActivationDescriptor {};
  struct CudaFilterDescriptor {};
  struct CudaConvolutionDescriptor {}; 
 
@@ -63,8 +65,15 @@ public:
     using DeviceBuffer_t = TCudaDeviceBuffer<AFloat>;
     using HostBuffer_t   = TCudaHostBuffer<AFloat>;
 
+    using ActivationDescriptor_t  = CudaActivationDescriptor;
     using ConvolutionDescriptor_t = CudaConvolutionDescriptor;
-    using FilterDescriptor_t = CudaFilterDescriptor; 
+    using FilterDescriptor_t      = CudaFilterDescriptor;
+    /*using DropoutDescriptor_t     = CudaDropoutDescriptor;
+    using FilterDescriptor_t      = CudaFilterDescriptor;
+    using OpTensorDescriptor_t    = CudaOpTensorDescriptor;
+    using PoolingDescriptor_t     = CudaPoolingDescriptor;
+    using ReductionDescriptor_t   = CudaReduceTensorDescriptor;*/
+
 
 
 #if 0 // old definitions
@@ -551,10 +560,27 @@ public:
    // new definitions
 //////////////////////////////////////////////////////////////////////////////////////////
 
-      //____________________________________________________________________________
-      //
-      // Propagation
-      //____________________________________________________________________________
+
+   //____________________________________________________________________________
+   //
+   // Architecture Initialization
+   //____________________________________________________________________________
+
+   template<typename Layer_t>
+   static void InitializeCNNDescriptors(CNN::TDescriptors<Layer_t> &  descriptors) {
+      InitializeDescriptor(descriptors.LayerDescriptor);
+      InitializeDescriptor(descriptors.HelperDescriptor);
+      InitializeDescriptor(descriptors.WeightsDescriptor);
+   }
+   
+   static void InitializeDescriptor(ActivationDescriptor_t &  activationDescr);
+   static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr);
+   static void InitializeDescriptor(FilterDescriptor_t &      filterDescr);
+   
+   //____________________________________________________________________________
+   //
+   // Propagation
+   //____________________________________________________________________________
 
    /** @name Forward Propagation
     * Low-level functions required for the forward propagation of activations
