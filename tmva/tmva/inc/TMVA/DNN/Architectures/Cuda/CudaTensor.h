@@ -86,7 +86,7 @@ public:
 private:
 
    //static size_t                         fInstances;        ///< Current number of matrix instances.
-   static std::vector<cudnnHandle_t>     fCudnnHandle;      ///< Holds the cuddn library context (one for every CUDA stream and device)
+   static std::vector<cudnnHandle_t>     fCudnnHandle;      ///< Holds the cuddn library context (one for every CUDA stream)
    //static AFloat                         * fDeviceReturn;   ///< Buffer for kernel return values.
    //static AFloat                         * fOnes;           ///< Vector used for summations of columns.
    //static size_t                         fNOnes;            ///< Current length of the one vector.

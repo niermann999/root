@@ -76,6 +76,8 @@ public:
     //using ReductionDescriptor_t   = CudaReduceTensorDescriptor;
 
     using EmptyDescriptor_t       = CudaEmptyDescriptor;        // Used if a descriptor is not needed in a class
+    
+    using ConvDescriptors_t       =  CNN::TCNNDescriptors<CNN::TConvLayer<TCuda<AReal>>>;
 
 #if 0 // old definitions
 
@@ -568,15 +570,7 @@ public:
    //____________________________________________________________________________
 
    template<typename Layer_t>
-   static void InitializeCNNDescriptors(CNN::TCNNDescriptors<Layer_t> &  descriptors) {
-      InitializeDescriptor(descriptors.LayerDescriptor);
-      InitializeDescriptor(descriptors.HelperDescriptor);
-      InitializeDescriptor(descriptors.WeightsDescriptor);
-   }
-   
-   static void InitializeDescriptor(ActivationDescriptor_t &  activationDescr) {}
-   static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr) {}
-   static void InitializeDescriptor(FilterDescriptor_t &      filterDescr) {} 
+   static void InitializeCNNDescriptors(CNN::TDescriptors *& /*descriptors*/, Layer_t *L = nullptr) {}
    
    //____________________________________________________________________________
    //
@@ -628,10 +622,6 @@ public:
                         const Matrix_t & weights,
                         const Tensor_t & activationBackward);
 
-
-
-
-
    /** Adds a the elements in matrix B scaled by c to the elements in
     *  the matrix A. This is required for the weight update in the gradient
     *  descent step.*/
@@ -679,6 +669,13 @@ public:
     * and writes the results into the result matrix.
     */
       ///@{
+         /*  impl using Matrix */
+   /*inline void evaluate(Matrix_t &A, EActivationFunction f)
+   {
+    Tensor_t tA(A);
+    evaluate<TCuda<AReal>>(tA,f);
+   }*/
+   
    static void IdentityDerivative(Tensor_t & B,
                                   const Tensor_t &A);
 
@@ -881,7 +878,8 @@ public:
                                 const Tensor_t &input,
                                 const Matrix_t &weights, const Matrix_t & biases,
                                 const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
-                                Tensor_t & /* inputPrime */);
+                                Tensor_t & /* inputPrime */,
+                                const ConvDescriptors_t & descriptors);
 
    /** @name Backward Propagation in Convolutional Layer
     */

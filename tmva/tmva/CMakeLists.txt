@@ -436,7 +436,7 @@ if(tmva-gpu)
     src/DNN/Architectures/Cuda/CudaTensor.cu
     src/DNN/Architectures/Cudnn.cu
   )
-  target_include_directories(TMVA PRIVATE ${CUDA_INCLUDE_DIRS} ~/Project/root/tmva/tmva/src/DNN/Architectures/Cudnn/)
+  target_include_directories(TMVA PRIVATE ${CUDA_INCLUDE_DIRS})
   target_link_libraries(TMVA PRIVATE ${CUDA_CUBLAS_LIBRARIES})
   target_link_libraries(TMVA PRIVATE ${CUDA_CUBLAS_LIBRARIES} /usr/local/cuda/lib64/libcudnn.so)
 endif()

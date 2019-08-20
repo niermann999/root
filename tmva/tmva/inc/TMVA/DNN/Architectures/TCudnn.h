@@ -19,7 +19,7 @@
 #define TMVA_DNN_ARCHITECTURES_CUDNN
 
 #include "TMVA/DNN/Functions.h"
-//#include "TMVA/DNN/CNN/ContextHandles.h"
+#include "TMVA/DNN/CNN/ContextHandles.h"
 //#include "TMVA/DNN/CNN/Descriptors.h"
 #include "TMVA/DNN/CNN/ConvLayer.h"
 
@@ -69,6 +69,9 @@ public:
     using ReductionDescriptor_t   = cudnnReduceTensorDescriptor_t;
     
     using EmptyDescriptor_t       = TCudnnEmptyDescriptor;        // Used if a descriptor is not needed in a class
+    
+    //template<typename AFloat>
+    using ConvDescriptors_t       =  CNN::TCNNDescriptors<CNN::TConvLayer<TCudnn<AFloat>>>;
 
    //____________________________________________________________________________
    //
@@ -76,7 +79,7 @@ public:
    //____________________________________________________________________________
 
    template<typename Layer_t>
-   static void InitializeCNNDescriptors(CNN::TCNNDescriptors<Layer_t> &  descriptors);
+   static void InitializeCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L = nullptr);
    
    static void InitializeDescriptor(ActivationDescriptor_t &  activationDescr);
    static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr);
@@ -196,25 +199,25 @@ public:
     */
       ///@{
 
-   /*static Scalar_t MeanSquaredError(const Matrix_t &Y, const Matrix_t &output,
+   static Scalar_t MeanSquaredError(const Matrix_t &Y, const Matrix_t &output,
                                     const Matrix_t &weights);
    static void MeanSquaredErrorGradients(Matrix_t &dY, const Matrix_t &Y,
-                                         const Matrix_t &output, const Matrix_t &weights);*/
+                                         const Matrix_t &output, const Matrix_t &weights) {}
 
    /** Sigmoid transformation is implicitly applied, thus \p output should
     *  hold the linear activations of the last layer in the net. */
-   /*static Scalar_t CrossEntropy(const Matrix_t &Y, const Matrix_t &output,
-                                const Matrix_t &weights);
+   static Scalar_t CrossEntropy(const Matrix_t &Y, const Matrix_t &output,
+                                const Matrix_t &weights) {}
 
    static void CrossEntropyGradients(Matrix_t &dY, const Matrix_t &Y,
-                                     const Matrix_t &output, const Matrix_t &weights);*/
+                                     const Matrix_t &output, const Matrix_t &weights) {}
 
    /** Softmax transformation is implicitly applied, thus \p output should
     *  hold the linear activations of the last layer in the net. */
-   /*static Scalar_t SoftmaxCrossEntropy(const Matrix_t &Y, const Matrix_t &output,
-                                       const Matrix_t &weights);
+   static Scalar_t SoftmaxCrossEntropy(const Matrix_t &Y, const Matrix_t &output,
+                                       const Matrix_t &weights) {}
    static void SoftmaxCrossEntropyGradients(Matrix_t &dY, const Matrix_t &Y,
-                                            const Matrix_t &output, const Matrix_t &weights);*/
+                                            const Matrix_t &output, const Matrix_t &weights) {}
    ///@}
 
    //____________________________________________________________________________
@@ -230,10 +233,10 @@ public:
     * classification.
     */
    ///@{
-   /*static void Sigmoid(Matrix_t &YHat,
-                       const Matrix_t & );
+   static void Sigmoid(Matrix_t &YHat,
+                       const Matrix_t & ) {}
    static void Softmax(Matrix_t &YHat,
-                       const Matrix_t & );*/
+                       const Matrix_t & ) {}
    ///@}
 
    //____________________________________________________________________________
@@ -250,15 +253,15 @@ public:
     */
    ///@{
 
-   /*static Scalar_t L1Regularization(const Matrix_t & W);
+   static Scalar_t L1Regularization(const Matrix_t & W);
    static void AddL1RegularizationGradients(Matrix_t & A,
                                             const Matrix_t & W,
-                                            Scalar_t weightDecay);*/
+                                            Scalar_t weightDecay) {}
 
-   /*static Scalar_t L2Regularization(const Matrix_t & W);
+   static Scalar_t L2Regularization(const Matrix_t & W);
    static void AddL2RegularizationGradients(Matrix_t & A,
                                             const Matrix_t & W,
-                                            Scalar_t weightDecay);*/
+                                            Scalar_t weightDecay) {}
       ///@}
 
    //____________________________________________________________________________
@@ -273,12 +276,12 @@ public:
     */
    ///@{
 
-   //static void InitializeGauss(Matrix_t & A);
-   //static void InitializeUniform(Matrix_t & A);
-   //static void InitializeIdentity(Matrix_t & A);
-   //static void InitializeZero(Matrix_t & A);
-   //static void InitializeGlorotNormal(Matrix_t & A);
-   //static void InitializeGlorotUniform(Matrix_t & A);
+   static void InitializeGauss(Matrix_t & A) {}
+   static void InitializeUniform(Matrix_t & A) {}
+   static void InitializeIdentity(Matrix_t & A) {}
+   static void InitializeZero(Matrix_t & A) {}
+   static void InitializeGlorotNormal(Matrix_t & A) {}
+   static void InitializeGlorotUniform(Matrix_t & A) {}
 
       // return static instance of random generator used for initialization
       // if generator does not exist it is created the first time with a random seed (e.g. seed = 0)
@@ -299,7 +302,7 @@ public:
 
    /** Apply dropout with activation probability \p p to the given
     *  tensor \p A and scale the result by reciprocal of \p p. */
-   //static void Dropout(Tensor_t & A, Scalar_t p);
+   static void Dropout(Tensor_t & A, Scalar_t p) {}
 
       ///@}
 
@@ -314,11 +317,11 @@ public:
       ///@{
 
    /** Calculate how many neurons "fit" in the output layer, given the input as well as the layer's hyperparameters. */
-   //static size_t calculateDimension(size_t imgDim, size_t fltDim, size_t padding, size_t stride);
+   static size_t calculateDimension(size_t imgDim, size_t fltDim, size_t padding, size_t stride) {}
 
    /** Transform the matrix B in local view format, suitable for
     *  convolution, and store it in matrix A */
-   /*static void Im2col(Matrix_t &A,
+   static void Im2col(Matrix_t &A,
                       const Matrix_t &B,
                       size_t imgHeight,
                       size_t imgWidth,
@@ -327,17 +330,18 @@ public:
                       size_t strideRows,
                       size_t strideCols,
                       size_t zeroPaddingHeight,
-                      size_t zeroPaddingWidth);*/
+                      size_t zeroPaddingWidth) {}
 
-   /*static void Im2colIndices(std::vector<int> &V, const Matrix_t &B, size_t nLocalViews, size_t imgHeight, size_t imgWidth, size_t fltHeight,
+   static void Im2colIndices(std::vector<int> &V, const Matrix_t &B, size_t nLocalViews,
+                             size_t imgHeight, size_t imgWidth, size_t fltHeight,
                              size_t fltWidth, size_t strideRows, size_t strideCols, size_t zeroPaddingHeight,
-                             size_t zeroPaddingWidth);
-   static void Im2colFast(Matrix_t &A, const Matrix_t &B, const std::vector<int> & V);*/
+                             size_t zeroPaddingWidth) {}
+   static void Im2colFast(Matrix_t &A, const Matrix_t &B, const std::vector<int> & V) {}
 
    /** Rotates the matrix \p B, which is representing a weights,
     *  and stores them in the matrix \p A. */
-   /*static void RotateWeights(Matrix_t &A, const Matrix_t &B, size_t filterDepth, size_t filterHeight,
-                             size_t filterWidth, size_t numFilters);*/
+   static void RotateWeights(Matrix_t &A, const Matrix_t &B, size_t filterDepth, size_t filterHeight,
+                             size_t filterWidth, size_t numFilters) {}
 
    /** Add the biases in the Convolutional Layer.  */
    static void AddConvBiases(Matrix_t &output, const Matrix_t &biases);
@@ -353,8 +357,8 @@ public:
                                 const Matrix_t &weights, const Matrix_t & biases,
                                 const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
                                 Tensor_t & /* inputPrime */,
-                                //const CNN::TDescriptors<CNN::TConvLayer<TCudnn<AFloat>>> & descriptors,
-                                const TDescriptors & descriptors,
+                                const ConvDescriptors_t & descriptors,
+                                //CNN::TDescriptors<CNN::TConvLayer<TCudnn<AFloat>>>
                                 const AFloat alpha = 1,
                                 const AFloat beta  = 1);
 
@@ -370,37 +374,37 @@ public:
     *  in \p df and thus produces only a valid result, if it is applied the
     *  first time after the corresponding forward propagation has been per-
     *  formed. */
-   /*static void ConvLayerBackward(Tensor_t &activationGradientsBackward,
+   static void ConvLayerBackward(Tensor_t &activationGradientsBackward,
                                  Matrix_t &weightGradients, Matrix_t &biasGradients,
                                  Tensor_t &df,
                                  const Tensor_t &activationGradients,
                                  const Matrix_t &weights,
                                  const Tensor_t &activationBackward, size_t batchSize,
                                  size_t inputHeight, size_t inputWidth, size_t depth, size_t height, size_t width,
-                                 size_t filterDepth, size_t filterHeight, size_t filterWidth, size_t nLocalViews);*/
+                                 size_t filterDepth, size_t filterHeight, size_t filterWidth, size_t nLocalViews) {}
 
    /** Utility function for calculating the activation gradients of the layer
     *  before the convolutional layer. */
-   /*static void CalculateConvActivationGradients(Tensor_t &activationGradientsBackward,
+   static void CalculateConvActivationGradients(Tensor_t &activationGradientsBackward,
                                                 const Tensor_t &df,
                                                 const Matrix_t &weights, size_t batchSize,
                                                 size_t inputHeight, size_t inputWidth, size_t depth, size_t height,
                                                 size_t width, size_t filterDepth, size_t filterHeight,
-                                                size_t filterWidth);*/
-
+                                                size_t filterWidth) {}
+                                                
    /** Utility function for calculating the weight gradients of the convolutional
     * layer. */
-   /*static void CalculateConvWeightGradients(Matrix_t &weightGradients,
+   static void CalculateConvWeightGradients(Matrix_t &weightGradients,
                                             const Tensor_t &df,
                                             const Tensor_t &activations_backward,
                                             size_t batchSize, size_t inputHeight, size_t inputWidth, size_t depth,
                                             size_t height, size_t width, size_t filterDepth, size_t filterHeight,
-                                            size_t filterWidth, size_t nLocalViews);*/
+                                            size_t filterWidth, size_t nLocalViews) {}
 
    /** Utility function for calculating the bias gradients of the convolutional
     *  layer */
-   /*static void CalculateConvBiasGradients(Matrix_t &biasGradients, const Tensor_t &df,
-                                          size_t batchSize, size_t depth, size_t nLocalViews);*/
+   static void CalculateConvBiasGradients(Matrix_t &biasGradients, const Tensor_t &df,
+                                          size_t batchSize, size_t depth, size_t nLocalViews) {}
       ///@}
    
    ///@}
@@ -416,8 +420,8 @@ public:
    /** Downsample the matrix \p C to the matrix \p A, using max
     * operation, such that the winning indices are stored in matrix
     * \p B. */
-   /*static void Downsample(Tensor_t &A, Tensor_t &B, const Tensor_t &C, size_t imgHeight,
-                          size_t imgWidth, size_t fltHeight, size_t fltWidth, size_t strideRows, size_t strideCols);*/
+   static void Downsample(Tensor_t &A, Tensor_t &B, const Tensor_t &C, size_t imgHeight,
+                          size_t imgWidth, size_t fltHeight, size_t fltWidth, size_t strideRows, size_t strideCols) {}
 
       ///@}
 
@@ -427,7 +431,7 @@ public:
    /** Perform the complete backward propagation step in a Pooling Layer. Based on the
     *  winning idices stored in the index matrix, it just forwards the actiovation
     *  gradients to the previous layer. */
-   /*static void MaxPoolLayerBackward(Tensor_t &activationGradientsBackward,
+   static void MaxPoolLayerBackward(Tensor_t &activationGradientsBackward,
                                     const Tensor_t &activationGradients,
                                     const Tensor_t &indexMatrix,
                                     size_t imgHeight,
@@ -436,7 +440,7 @@ public:
                                     size_t fltWidth,
                                     size_t strideRows,
                                     size_t strideCols,
-                                    size_t nLocalViews);*/
+                                    size_t nLocalViews)  {}
 
       ///@}
 
@@ -577,10 +581,13 @@ public:
 //____________________________________________________________________________
 template<typename AFloat>
 template<typename Layer_t>
-void TCudnn<AFloat>::InitializeCNNDescriptors(CNN::TCNNDescriptors<Layer_t> &  descriptors) {
-   InitializeDescriptor(descriptors.LayerDescriptor);
-   InitializeDescriptor(descriptors.HelperDescriptor);
-   InitializeDescriptor(descriptors.WeightsDescriptor);
+void TCudnn<AFloat>::InitializeCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L) {
+   auto cnnDescriptors = new CNN::TCNNDescriptors<Layer_t> ();
+   InitializeDescriptor(cnnDescriptors->LayerDescriptor);
+   InitializeDescriptor(cnnDescriptors->HelperDescriptor);
+   InitializeDescriptor(cnnDescriptors->WeightsDescriptor);
+   
+   descriptors = cnnDescriptors;
 }
    
 //____________________________________________________________________________

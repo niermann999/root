@@ -253,20 +253,19 @@ TCudaTensor<AFloat>::TCudaTensor(const TCudaMatrix<AFloat>& matrix, size_t dim) 
 template <typename AFloat>
 TCudaTensor<AFloat>::~TCudaTensor() 
 {
-#if USE_CUDNN
+//#if USE_CUDNN
    CUDNNCHECK(cudnnDestroyTensorDescriptor(fTensorDescriptor));
 
    // When all tensors in a streamIndx are destroyed, release cudnn resources 
-   if (--fInstances[fStreamIndx] <= 0) CUDNNCHECK(cudnnDestroy(fCudnnHandle[fStreamIndx]));
-#endif
-
+   //if (--fInstances[fStreamIndx] <= 0) CUDNNCHECK(cudnnDestroy(fCudnnHandle[fStreamIndx]));
+//#endif
 }
 
 //____________________________________________________________________________
 template <typename AFloat>
 inline void TCudaTensor<AFloat>::InitializeCuda()
 {
-#if USE_CUDNN
+//#if USE_CUDNN
    
    // Also check whether a new streamIndx has been opened
    if (fInstances.size() - 1 < fStreamIndx) {
@@ -323,7 +322,7 @@ inline void TCudaTensor<AFloat>::InitializeCuda()
    size_t tensorSize;
    CUDNNCHECK(cudnnGetTensorSizeInBytes(fTensorDescriptor, &tensorSize));
    assert(fSize == tensorSize/sizeof(AFloat));
-#endif
+//#endif
 }
 
 //____________________________________________________________________________

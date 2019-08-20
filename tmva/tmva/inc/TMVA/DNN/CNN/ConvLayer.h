@@ -27,7 +27,7 @@
 #ifndef TMVA_CNN_CONVLAYER
 #define TMVA_CNN_CONVLAYER
 
-//#include "cudnn.h"
+//#include "TMVA/DNN/Architectures/TCudnn.h"
 #include "TMatrix.h"
 
 #include "TMVA/DNN/GeneralLayer.h"
@@ -41,6 +41,8 @@
 namespace TMVA {
 namespace DNN {
 namespace CNN {
+
+struct TDescriptor;
 
 template <typename Architecture_t>
 class TConvLayer : public VGeneralLayer<Architecture_t> {
@@ -90,11 +92,9 @@ private:
 
    Tensor_t fForwardTensor;            ///< Cache tensor used for speeding-up the forward pass.
    
-   TCNNDescriptors<TConvLayer<Architecture_t> > fDescriptors; ///< Keeps the convolution, activations and filter descriptors
+   TDescriptors * fDescriptors = nullptr; ///< Keeps the convolution, activations and filter descriptors
 
-   void InitializeDescriptors() {
-      Architecture_t::InitializeCNNDescriptors(fDescriptors);
-   }
+   void InitializeDescriptors(); 
 public:
    /*! Constructor. */
    TConvLayer(size_t BatchSize, size_t InputDepth, size_t InputHeight, size_t InputWidth, size_t Depth, EInitialization Init,
@@ -247,7 +247,7 @@ TConvLayer<Architecture_t>::TConvLayer(TConvLayer<Architecture_t> *layer)
      fReg(layer->GetRegularization()), fWeightDecay(layer->GetWeightDecay()),
      fForwardTensor( layer->GetForwardMatrices().GetShape() )
 {
-   Architecture_t::InitializeDescriptors(fDescriptors);
+   InitializeDescriptors();
    // size_t outputNSlices = (layer->GetDerivatives()).size();
    // size_t outputNRows = 0;
    // size_t outputNCols = 0;
@@ -273,7 +273,7 @@ TConvLayer<Architecture_t>::TConvLayer(const TConvLayer &convLayer)
       fReg(convLayer.fReg), fWeightDecay(convLayer.fWeightDecay),
       fForwardTensor( convLayer.GetForwardMatrices().GetShape() )
 {
-   InitializeDescriptors(fDescriptors);
+   InitializeDescriptors();
    // size_t outputNSlices = convLayer.fDerivatives.size();
    // size_t outputNRows = convLayer.GetDerivativesAt(0).GetNrows();
    // size_t outputNCols = convLayer.GetDerivativesAt(0).GetNcols();
@@ -285,9 +285,11 @@ TConvLayer<Architecture_t>::TConvLayer(const TConvLayer &convLayer)
 }
 
 //______________________________________________________________________________
+//FIXME: Do the release of cudnn resources
 template <typename Architecture_t>
 TConvLayer<Architecture_t>::~TConvLayer()
 {
+   if (fDescriptors) delete fDescriptors;
    // Release cuDNN resources
    //CUDNNCHECK(cudnnDestroyFilterDescriptor(fFilterDescriptor));
    //CUDNNCHECK(cudnnDestroyConvolutionDescriptor(fConvolutionDescriptor));
@@ -304,7 +306,7 @@ auto TConvLayer<Architecture_t>::Forward(Tensor_t &input, bool /*applyDropout*/)
    //R__ASSERT( input.size() > 0);
    Architecture_t::ConvLayerForward(this->GetOutput(), this->GetDerivatives(), input, this->GetWeightsAt(0),
                                     this->GetBiasesAt(0), params, this->GetActivationFunction(),
-                                    this->GetForwardMatrices());
+                                    this->GetForwardMatrices(), (TCNNDescriptors<TConvLayer<Architecture_t>> &) (*fDescriptors));
 
 #if 0
    // in printciple I could make the indices data member of the class
@@ -447,6 +449,11 @@ size_t TConvLayer<Architecture_t>::calculateNLocalViews(size_t inputHeight, size
     int width = calculateDimension(inputWidth, filterWidth, paddingWidth, strideCols);
 
     return height * width;
+}
+
+template <typename Architecture_t>
+void TConvLayer<Architecture_t>::InitializeDescriptors() {
+      Architecture_t::InitializeCNNDescriptors(fDescriptors, this);
 }
 
 } // namespace CNN

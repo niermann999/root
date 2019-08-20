@@ -21,19 +21,18 @@
 namespace TMVA
 {
 namespace DNN
-{
-   // Base class for easier function argument passing
-   struct TDescriptors {};
-   
+{ 
 namespace CNN
 {
+
+struct TDescriptors {};
 //______________________________________________________________________________
 //
 // Keeps the descriptors for the CNN 
 //______________________________________________________________________________
 
 template<typename Layer_t>
-struct TCNNDescriptors : TMVA::DNN::TDescriptors {
+struct TCNNDescriptors : public TDescriptors {
    using LayerDescriptor_t   = typename Layer_t::LayerDescriptor_t;   // Main layer operation
    using HelperDescriptor_t  = typename Layer_t::HelperDescriptor_t;  // Used to define possible helpers for the layers (e.g. activations)
    using WeightsDescriptor_t = typename Layer_t::WeightsDescriptor_t; // The weights that are modified (e.g filters)

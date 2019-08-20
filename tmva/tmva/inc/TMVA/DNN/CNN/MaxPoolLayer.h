@@ -68,8 +68,8 @@ public:
 private:
    Tensor_t fIndexTensor; ///< Matrix of indices for the backward pass.
    
-   TCNNDescriptors<TMaxPoolLayer<Architecture_t> > fDescriptors; ///< Keeps the descriptor for the pooling operation in cudnn
-   void InitializeDescriptors();                                 ///< Initializes cudnn descriptors
+   /*TDescriptors<TMaxPoolLayer<Architecture_t> > fDescriptors; ///< Keeps the descriptor for the pooling operation in cudnn
+   void InitializeDescriptors();    */                             ///< Initializes cudnn descriptors
 public:
    /*! Constructor. */
    TMaxPoolLayer(size_t BatchSize, size_t InputDepth, size_t InputHeight, size_t InputWidth, size_t FilterHeight,

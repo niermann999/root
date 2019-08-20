@@ -70,7 +70,8 @@ public:
    //using ReductionDescriptor_t   = DummyReduceTensorDescriptor;
    
    using EmptyDescriptor_t       = DummyEmptyDescriptor;        // Used if a descriptor is not needed in a class
-
+   
+   using ConvDescriptors_t       =  CNN::TCNNDescriptors<CNN::TConvLayer<TCpu<AReal>>>;
 
    //____________________________________________________________________________
    //
@@ -78,15 +79,7 @@ public:
    //____________________________________________________________________________
    
    template<typename Layer_t>
-   static void InitializeCNNDescriptors(CNN::TCNNDescriptors<Layer_t> &  descriptors) {
-      InitializeDescriptor(descriptors.LayerDescriptor);
-      InitializeDescriptor(descriptors.HelperDescriptor);
-      InitializeDescriptor(descriptors.WeightsDescriptor);
-   }
-   
-   static void InitializeDescriptor(ActivationDescriptor_t &  activationDescr) {}
-   static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr) {}
-   static void InitializeDescriptor(FilterDescriptor_t &      filterDescr) {}
+   static void InitializeCNNDescriptors(CNN::TDescriptors *& /*descriptors*/, Layer_t *L = nullptr) {}
    
    // // Utility function to convert from a Matrix to a Tensor
    // static Tensor_t  MatrixToTensor(Matrix_t & A) { 
@@ -194,6 +187,13 @@ public:
     * and writes the results into the result matrix.
     */
    ///@{
+   /*  impl using Matrix */
+   /*inline void evaluate(Matrix_t &A, EActivationFunction f)
+   {
+    Tensor_t tA(A);
+    evaluate<TCpu<AReal>>(tA,f);
+   }*/
+
    static void IdentityDerivative(Tensor_t & B,
                                   const Tensor_t &A);
 
@@ -396,7 +396,8 @@ public:
                                 const Tensor_t &input,
                                 const Matrix_t &weights, const Matrix_t & biases,
                                 const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
-                                Tensor_t & /* inputPrime */);
+                                Tensor_t & /* inputPrime */,
+                                const ConvDescriptors_t & descriptors);
 
    /** @name Backward Propagation in Convolutional Layer
     */
