@@ -41,13 +41,13 @@ void TCudnn<AFloat>::Activation(TCudaTensor<AFloat> & A, EActivationFunction act
       default:    activationMode = CUDNN_ACTIVATION_IDENTITY;     
    };
    
-   CUDNNCHECK(cudnnSetActivationDescriptor(activationDescriptor,
+   CUDNNCHECK(cudnnSetActivationDescriptor(activationDescr,
                                            activationMode,
                                            CUDNN_PROPAGATE_NAN,
                                            coef));
                                            
    CUDNNCHECK(cudnnActivationForward(A.GetCudnnHandle(),
-                                     activationDescriptor,
+                                     activationDescr,
                                      &alpha,
                                      A.GetTensorDescriptor(),
                                      A.GetDataPointer(),
@@ -55,7 +55,7 @@ void TCudnn<AFloat>::Activation(TCudaTensor<AFloat> & A, EActivationFunction act
                                      A.GetTensorDescriptor(),     // Can be computed in place
                                      A.GetDataPointer()));
 
-   CUDNNCHECK(cudnnDestroyActivationDescriptor(activationDescriptor));
+   //CUDNNCHECK(cudnnDestroyActivationDescriptor(activationDescr));
 }
 
 //______________________________________________________________________________

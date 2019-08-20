@@ -76,7 +76,6 @@ protected:
    size_t fNLocalViews;          ///< The number of local views in one image.
 
    Scalar_t fDropoutProbability; ///< Probability that an input is active.
-
 private:
    size_t fPaddingHeight;        ///< The number of zero layers added top and bottom of the input.
    size_t fPaddingWidth;         ///< The number of zero layers left and right of the input.
@@ -91,10 +90,11 @@ private:
 
    Tensor_t fForwardTensor;            ///< Cache tensor used for speeding-up the forward pass.
    
-   TDescriptors<TConvLayer<Architecture_t> > fDescriptors; ///< Keeps the convolution, activations and filter descriptors
-   
-   void InitializeDescriptors();
+   TCNNDescriptors<TConvLayer<Architecture_t> > fDescriptors; ///< Keeps the convolution, activations and filter descriptors
 
+   void InitializeDescriptors() {
+      Architecture_t::InitializeCNNDescriptors(fDescriptors);
+   }
 public:
    /*! Constructor. */
    TConvLayer(size_t BatchSize, size_t InputDepth, size_t InputHeight, size_t InputWidth, size_t Depth, EInitialization Init,
@@ -218,7 +218,7 @@ TConvLayer<Architecture_t>::TConvLayer(size_t batchSize, size_t inputDepth, size
      fDropoutProbability(dropoutProbability), fPaddingHeight(paddingHeight), fPaddingWidth(paddingWidth),
      fDerivatives(), fF(f), fReg(reg), fWeightDecay(weightDecay)
 {  
-   //Architecture_t::InitializeDescriptors(fDescriptors);
+   InitializeDescriptors();
    /** Each element in the vector is a `T_Matrix` representing an event, therefore `vec.size() == batchSize`.
     *  Cells in these matrices are distributed in the following manner:
     *  Each row represents a single feature map, therefore we have `nRows == depth`.
@@ -247,6 +247,7 @@ TConvLayer<Architecture_t>::TConvLayer(TConvLayer<Architecture_t> *layer)
      fReg(layer->GetRegularization()), fWeightDecay(layer->GetWeightDecay()),
      fForwardTensor( layer->GetForwardMatrices().GetShape() )
 {
+   Architecture_t::InitializeDescriptors(fDescriptors);
    // size_t outputNSlices = (layer->GetDerivatives()).size();
    // size_t outputNRows = 0;
    // size_t outputNCols = 0;
@@ -272,6 +273,7 @@ TConvLayer<Architecture_t>::TConvLayer(const TConvLayer &convLayer)
       fReg(convLayer.fReg), fWeightDecay(convLayer.fWeightDecay),
       fForwardTensor( convLayer.GetForwardMatrices().GetShape() )
 {
+   InitializeDescriptors(fDescriptors);
    // size_t outputNSlices = convLayer.fDerivatives.size();
    // size_t outputNRows = convLayer.GetDerivativesAt(0).GetNrows();
    // size_t outputNCols = convLayer.GetDerivativesAt(0).GetNcols();
@@ -289,12 +291,6 @@ TConvLayer<Architecture_t>::~TConvLayer()
    // Release cuDNN resources
    //CUDNNCHECK(cudnnDestroyFilterDescriptor(fFilterDescriptor));
    //CUDNNCHECK(cudnnDestroyConvolutionDescriptor(fConvolutionDescriptor));
-}
-
-//______________________________________________________________________________
-template <typename Architecture_t>
-void TConvLayer<Architecture_t>::InitializeDescriptors(){
-   Architecture_t::InitializeDescriptors(fDescriptors);
 }
 
 //______________________________________________________________________________

@@ -26,7 +26,7 @@ namespace DNN
 {
 
 //____________________________________________________________________________
-template<>
+/*template<>
 void TCudnn<float>::Multiply(TCudaTensor<float> &C,
                              const TCudaTensor<float> &A,
                              const TCudaTensor<float> &B,
@@ -92,7 +92,7 @@ void TCudnn<double>::Multiply(TCudaTensor<double> &C,
                             C.GetDataPointer()));
                                                     
    CUDNNCHECK(cudnnDestroyOpTensorDescriptor(opTensorDescr));
-}
+}*/
 
 //____________________________________________________________________________
 /*template<>
@@ -129,7 +129,7 @@ float TCudnn<float>::Sum(const TCudaTensor<float> & A, const float alpha, const 
    TCudaHostBuffer<float>    hostBuffer (1);
    const std::vector<size_t> shapeVec {1,1,1,1};
    // This constructor copies the data automatically to device
-   TCudaTensor<float>        C (1, hostBuffer, 4, shapeVec);
+   TCudaTensor<float>        C (hostBuffer, shapeVec);
                                          
    // Descriptor for the Tensor Reduction
    cudnnReduceTensorDescriptor_t reduceTensorDescr;
@@ -198,7 +198,7 @@ double TCudnn<double>::Sum(const TCudaTensor<double> & A, const double alpha, co
    TCudaHostBuffer<double>   hostBuffer (1);
    const std::vector<size_t> shapeVec {1,1,1,1};
    // This constructor copies the data automatically to device
-   TCudaTensor<double>       C (1, hostBuffer, 4, shapeVec);
+   TCudaTensor<double>       C (hostBuffer, shapeVec);
                                          
    // Descriptor for the Tensor Reduction
    cudnnReduceTensorDescriptor_t reduceTensorDescr;
@@ -256,33 +256,6 @@ double TCudnn<double>::Sum(const TCudaTensor<double> & A, const double alpha, co
    return *hostBuffer;
 }
 
-
-//____________________________________________________________________________
-template<>
-float TCudnn<float>::Sum(const std::vector<TCudaTensor<float> > &A,
-                              const float alpha,
-                              const float beta)
-{
-   float totalSum = 0.0;
-   for (size_t i = 0; i < A.size(); ++i) {
-      totalSum += Sum(A[i], alpha, beta);
-   }
-   return totalSum;
-}
-
-//____________________________________________________________________________
-template<>
-double TCudnn<double>::Sum(const std::vector<TCudaTensor<double> > &A,
-                              const double alpha,
-                              const double beta)
-{
-   double totalSum = 0.0;
-   for (size_t i = 0; i < A.size(); ++i) {
-      totalSum += Sum(A[i], alpha, beta);
-   }
-   return totalSum;
-}
-
 //____________________________________________________________________________
 /*template<>
 void TCudnn<float>::SumColumns(TCudaTensor<float> & B,
@@ -322,11 +295,11 @@ void TCudnn<double>::SumRows(TCudaTensor<double> & B,
 /// \param epsilon Equality tolerance, needed to address floating point arithmetic.
 /// \return Whether the two matrices can be considered equal element-wise
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-template<typename AFloat>
+/*template<typename AFloat>
 bool TCudnn<AFloat>::AlmostEquals(const TCudaTensor<AFloat> &A, const TCudaTensor<AFloat> &B, double epsilon)
 {
 
-}
+}*/
 
 //____________________________________________________________________________
 template<>
@@ -358,30 +331,6 @@ void TCudnn<double>::ScaleAdd(TCudaTensor<double> & B,
                              &beta,
                              B.GetTensorDescriptor(),        // Destination Tensor
                              B.GetDataPointer()));
-}
-
-//____________________________________________________________________________
-template<>
-void TCudnn<float>::ScaleAdd(std::vector<TCudaTensor<float>> & B,
-                             const std::vector<TCudaTensor<float>> & A,
-                             const float alpha,
-                             const float beta)
-{
-   for (size_t i = 0; i < A.size(); ++i) {
-      ScaleAdd(B[i], A[i], alpha, beta);
-   }
-}
-
-//____________________________________________________________________________
-template<>
-void TCudnn<double>::ScaleAdd(std::vector<TCudaTensor<double>> & B,
-                              const std::vector<TCudaTensor<double>> & A,
-                              const double alpha,
-                              const double beta)
-{
-   for (size_t i = 0; i < A.size(); ++i) {
-      ScaleAdd(B[i], A[i], alpha, beta);
-   }
 }
 
 //____________________________________________________________________________

@@ -128,16 +128,6 @@ void TCudnn<AFloat>::Copy(TCudaTensor<AFloat> & B,
 }
 
 //____________________________________________________________________________
-template<typename AFloat>
-void TCudnn<AFloat>::Copy(std::vector<TCudaTensor<AFloat>> & B,
-                         const std::vector<TCudaTensor<AFloat>> & A)
-{
-   for (size_t i = 0; i < B.size(); ++i) {
-      Copy(B[i], A[i]);
-   }
-}
-
-//____________________________________________________________________________
 /*template<typename AFloat>
 size_t TCudnn<AFloat>::calculateDimension(size_t imgDim, size_t fltDim, size_t padding, size_t stride)
 {
@@ -211,16 +201,16 @@ void TCudnn<AFloat>::RotateWeights(TCudaTensor<AFloat> &A,
 }*/
 
 
-template <>
-void TCudnn<float>::ConvLayerForward(std::vector<TCudaTensor<float>> & output,
-                                     std::vector<TCudaTensor<float>> & derivatives,
-                                     const std::vector<TCudaTensor<float>> &input,
-                                     const TCudaTensor<float> &weights, const TCudaTensor<float> & biases,
+/*template <typename AFloat>
+void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
+                                      Tensor_t & derivatives,
+                                     const Tensor_t &input,
+                                     const Matrix_t &weights, const Matrix_t & biases,
                                      const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
-                                     std::vector<TCudaTensor<float>> & inputPrime,
-                                     const DNN::CNN::TDescriptors & descriptors
-                                     const float alpha,
-                                     const float beta)
+                                     Tensor_t & inputPrime,
+                                     const DNN::CNN::TDescriptors<> & descriptors,
+                                     const AFloat alpha,
+                                     const AFloat beta)
 {
    cudnnHandle_t cudnnHandle = input[0].GetCudnnHandle();
    
@@ -235,18 +225,11 @@ void TCudnn<float>::ConvLayerForward(std::vector<TCudaTensor<float>> & output,
                                          params.filterHeight,
                                          params.filterWidth));
                                          
-                                         
-   
    // Set the convolution
    /*cudnnConvolutionDescriptor_t fConvolutionDescriptor;      // Params of the convolution (can be reused in backward pass)
    CUDNNCHECK(cudnnCreateConvolutionDescriptor(&fConvolutionDescriptor));*/
-   
-   // Use tensor ops
-   /*cudnnStatus_t cudnnSetConvolutionMathType(
-    cudnnConvolutionDescriptor_t    convDesc,
-    cudnnMathType_t                 mathType)*/
     
-   CUDNNCHECK(cudnnSetConvolution2dDescriptor(descriptors.LayerDescriptor,
+   /*CUDNNCHECK(cudnnSetConvolution2dDescriptor(descriptors.LayerDescriptor,
                                               params.paddingHeight,
                                               params.paddingWidth,
                                               params.strideRows,
@@ -267,7 +250,7 @@ void TCudnn<float>::ConvLayerForward(std::vector<TCudaTensor<float>> & output,
                                                     (int*)&outputShape[3]));
    size_t size = 1;
    for (const auto& subDim: outputShape) size *= subDim;
-   TCudaTensor<float> outputTensor (size, outputShape.size(), outputShape);
+   TCudaTensor<AFloat> outputTensor (size, outputShape.size(), outputShape);
    
    // cuDNN decides on which algorithm to use
    cudnnConvolutionFwdAlgo_t algorithm;
@@ -285,14 +268,14 @@ void TCudnn<float>::ConvLayerForward(std::vector<TCudaTensor<float>> & output,
    size_t workSpaceSizeInBytes = 0;
    void   *workspace           = nullptr;
    CUDNNCHECK(cudnnGetConvolutionForwardWorkspaceSize(cudnnHandle,
-                                                  input[0].GetTensorDescriptor(),
-                                                  descriptors.WeightsDescriptor,
-                                                  fConvolutionDescriptor,
-                                                  outputTensor.GetTensorDescriptor(),
-                                                  algorithm,
-                                                  &workSpaceSizeInBytes));
+                                                      input[0].GetTensorDescriptor(),
+                                                      descriptors.WeightsDescriptor,
+                                                      fConvolutionDescriptor,
+                                                      outputTensor.GetTensorDescriptor(),
+                                                      algorithm,
+                                                      &workSpaceSizeInBytes));
                                                   
-   if (workSpaceSizeInBytes) cudaMalloc(&workspace, workSpaceSizeInBytes*sizeof(float));
+   if (workSpaceSizeInBytes) cudaMalloc(&workspace, workSpaceSizeInBytes*sizeof(AFloat));
    
    // Perform convolution
    CUDNNCHECK(cudnnConvolutionForward(cudnnHandle,
@@ -310,13 +293,10 @@ void TCudnn<float>::ConvLayerForward(std::vector<TCudaTensor<float>> & output,
                                       outputTensor.GetDataPointer()));
                                                                         
    // Apply activation
-   evaluate<TCudnn<float> >(outputTensor, activFunc);
+   evaluate<TCudnn<AFloat> >(outputTensor, activFunc);
    
-   // Put cudnn tensor in output container of the layer
-   output.push_back(outputTensor);
-   
-   //cudaFree(&workspace);
-}
+   cudaFree(&workspace);
+}*/
 
 //____________________________________________________________________________
 /*template<typename AFloat>

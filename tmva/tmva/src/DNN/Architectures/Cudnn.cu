@@ -17,9 +17,9 @@
 
 
 #include "TMVA/DNN/Architectures/TCudnn.h"
-/*#include "Cudnn/Propagation.cu"
+#include "Cudnn/Propagate.cu"
 #include "Cudnn/Arithmetic.cu"
-#include "Cudnn/ActivationFunctions.cu"
+/*#include "Cudnn/ActivationFunctions.cu"
 #include "Cudnn/OutputFunctions.cu"
 #include "Cudnn/LossFunctions.cu"
 #include "Cudnn/Regularization.cu"
@@ -30,8 +30,8 @@
 namespace TMVA {
 namespace DNN  {
 
-//template class TCudnn<Real_t>;
-//template class TCudnn<Double_t>;
+template class TCudnn<Real_t>;
+template class TCudnn<Double_t>;
 
 #ifndef R__HAS_TMVAGPU
    // if R__HAS_TMVAGPU is not defined this file should not be compiled 

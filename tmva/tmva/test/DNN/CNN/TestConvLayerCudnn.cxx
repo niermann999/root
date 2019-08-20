@@ -31,7 +31,7 @@
 #include <iostream>
 #include <cmath>
 
-#include "TMVA/DNN/Architectures/Cudnn.h"
+#include "TMVA/DNN/Architectures/TCudnn.h"
 #include "TestConvLayer.h"
 
 using namespace TMVA::DNN;
@@ -42,7 +42,7 @@ int main()
     using Scalar_t = Double_t;
 
     std::cout << "Testing Forward Propagation of the Convolutional Layer on the GPU:" << std::endl;
-
+    
     bool status = true;
 
     std::cout << "Test Forward-Propagation 1: " << std::endl;

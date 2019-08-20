@@ -22,6 +22,9 @@ namespace TMVA
 {
 namespace DNN
 {
+   // Base class for easier function argument passing
+   struct TDescriptors {};
+   
 namespace CNN
 {
 //______________________________________________________________________________
@@ -30,7 +33,7 @@ namespace CNN
 //______________________________________________________________________________
 
 template<typename Layer_t>
-struct TDescriptors {
+struct TCNNDescriptors : TMVA::DNN::TDescriptors {
    using LayerDescriptor_t   = typename Layer_t::LayerDescriptor_t;   // Main layer operation
    using HelperDescriptor_t  = typename Layer_t::HelperDescriptor_t;  // Used to define possible helpers for the layers (e.g. activations)
    using WeightsDescriptor_t = typename Layer_t::WeightsDescriptor_t; // The weights that are modified (e.g filters)
@@ -38,6 +41,8 @@ struct TDescriptors {
    LayerDescriptor_t   LayerDescriptor;
    HelperDescriptor_t  HelperDescriptor;
    WeightsDescriptor_t WeightsDescriptor;
+   
+   void InitializeDescriptors() {Layer_t::InitializeDescriptors();};
 };
 
 } // namespace CNN

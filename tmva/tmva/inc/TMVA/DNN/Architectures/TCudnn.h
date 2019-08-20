@@ -19,7 +19,7 @@
 #define TMVA_DNN_ARCHITECTURES_CUDNN
 
 #include "TMVA/DNN/Functions.h"
-#include "TMVA/DNN/CNN/ContextHandles.h"
+//#include "TMVA/DNN/CNN/ContextHandles.h"
 //#include "TMVA/DNN/CNN/Descriptors.h"
 #include "TMVA/DNN/CNN/ConvLayer.h"
 
@@ -37,6 +37,8 @@ namespace TMVA
 namespace DNN
 {
 
+ struct TCudnnEmptyDescriptor {};
+ 
 /** The TCudnn architecture class.
  *
  * Low-level interface class for CUDA computing architectures using the cuDNN
@@ -65,6 +67,8 @@ public:
     using OpTensorDescriptor_t    = cudnnOpTensorDescriptor_t;
     using PoolingDescriptor_t     = cudnnPoolingDescriptor_t;
     using ReductionDescriptor_t   = cudnnReduceTensorDescriptor_t;
+    
+    using EmptyDescriptor_t       = TCudnnEmptyDescriptor;        // Used if a descriptor is not needed in a class
 
    //____________________________________________________________________________
    //
@@ -72,11 +76,7 @@ public:
    //____________________________________________________________________________
 
    template<typename Layer_t>
-   static void InitializeCNNDescriptors(CNN::TDescriptors<Layer_t> &  descriptors) {
-      InitializeDescriptor(descriptors.LayerDescriptor);
-      InitializeDescriptor(descriptors.HelperDescriptor);
-      InitializeDescriptor(descriptors.WeightsDescriptor);
-   }
+   static void InitializeCNNDescriptors(CNN::TCNNDescriptors<Layer_t> &  descriptors);
    
    static void InitializeDescriptor(ActivationDescriptor_t &  activationDescr);
    static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr);
@@ -126,8 +126,8 @@ public:
                         Scalar_t alpha = 1.0,
                         Scalar_t beta = 1.0);
 
-   /*static void Copy(Tensor_t & A,
-                    const Tensor_t & B);*/
+   static void Copy(Tensor_t & A,
+                    const Tensor_t & B);
 
    // copy from another tensor
    /*template<typename ATensor_t>
@@ -150,21 +150,21 @@ public:
    /*static void IdentityDerivative(Tensor_t & B,
                                   const Tensor_t & A);*/
 
-   static void Activation(Tensor_t & B, EActivationFunction activFunct,
+   static void Activation(Tensor_t & B, EActivationFunction activFunct, ActivationDescriptor_t activationDescr,
                           const double coef = 0.0, const AFloat alpha = 1, const AFloat beta = 1);
                     
-   static void Relu(Tensor_t & B, const double coef = 0.0, 
+   static void Relu(Tensor_t & B, ActivationDescriptor_t activationDescr, const double coef = 0.0, 
                     const AFloat alpha = 1, const AFloat beta = 1);
                     
    /*static void ReluDerivative(Tensor_t & B,
                               const Tensor_t & A);*/
 
-   static void Sigmoid(Tensor_t & B, const double coef = 0.0, 
+   static void Sigmoid(Tensor_t & B, ActivationDescriptor_t activationDescr, const double coef = 0.0, 
                     const AFloat alpha = 1, const AFloat beta = 1);
    /*static void SigmoidDerivative(Tensor_t & B,
                                  const Tensor_t & A);*/
 
-   static void Tanh(Tensor_t & B, const double coef = 0.0, 
+   static void Tanh(Tensor_t & B, ActivationDescriptor_t activationDescr, const double coef = 0.0, 
                     const AFloat alpha = 1, const AFloat beta = 1);
    /*static void TanhDerivative(Tensor_t & B,
                               const Tensor_t & A);*/
@@ -353,6 +353,8 @@ public:
                                 const Matrix_t &weights, const Matrix_t & biases,
                                 const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
                                 Tensor_t & /* inputPrime */,
+                                //const CNN::TDescriptors<CNN::TConvLayer<TCudnn<AFloat>>> & descriptors,
+                                const TDescriptors & descriptors,
                                 const AFloat alpha = 1,
                                 const AFloat beta  = 1);
 
@@ -572,6 +574,15 @@ public:
 
 };
 
+//____________________________________________________________________________
+template<typename AFloat>
+template<typename Layer_t>
+void TCudnn<AFloat>::InitializeCNNDescriptors(CNN::TCNNDescriptors<Layer_t> &  descriptors) {
+   InitializeDescriptor(descriptors.LayerDescriptor);
+   InitializeDescriptor(descriptors.HelperDescriptor);
+   InitializeDescriptor(descriptors.WeightsDescriptor);
+}
+   
 //____________________________________________________________________________
 template <typename AFloat>
 void TCudnn<AFloat>::InitializeDescriptor(ActivationDescriptor_t & activationDescr) {

@@ -40,8 +40,10 @@ namespace DNN
 {
  struct CudaActivationDescriptor {};
  struct CudaFilterDescriptor {};
- struct CudaConvolutionDescriptor {}; 
-
+ struct CudaConvolutionDescriptor {};
+ struct CudaPoolingDescriptor {};
+ 
+ struct CudaEmptyDescriptor {}; 
 
 /** The TCuda architecture class.
  *
@@ -69,12 +71,11 @@ public:
     using ConvolutionDescriptor_t = CudaConvolutionDescriptor;
     using FilterDescriptor_t      = CudaFilterDescriptor;
     /*using DropoutDescriptor_t     = CudaDropoutDescriptor;
-    using FilterDescriptor_t      = CudaFilterDescriptor;
-    using OpTensorDescriptor_t    = CudaOpTensorDescriptor;
+    using OpTensorDescriptor_t    = CudaOpTensorDescriptor;*/
     using PoolingDescriptor_t     = CudaPoolingDescriptor;
-    using ReductionDescriptor_t   = CudaReduceTensorDescriptor;*/
+    //using ReductionDescriptor_t   = CudaReduceTensorDescriptor;
 
-
+    using EmptyDescriptor_t       = CudaEmptyDescriptor;        // Used if a descriptor is not needed in a class
 
 #if 0 // old definitions
 
@@ -567,15 +568,15 @@ public:
    //____________________________________________________________________________
 
    template<typename Layer_t>
-   static void InitializeCNNDescriptors(CNN::TDescriptors<Layer_t> &  descriptors) {
+   static void InitializeCNNDescriptors(CNN::TCNNDescriptors<Layer_t> &  descriptors) {
       InitializeDescriptor(descriptors.LayerDescriptor);
       InitializeDescriptor(descriptors.HelperDescriptor);
       InitializeDescriptor(descriptors.WeightsDescriptor);
    }
    
-   static void InitializeDescriptor(ActivationDescriptor_t &  activationDescr);
-   static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr);
-   static void InitializeDescriptor(FilterDescriptor_t &      filterDescr);
+   static void InitializeDescriptor(ActivationDescriptor_t &  activationDescr) {}
+   static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr) {}
+   static void InitializeDescriptor(FilterDescriptor_t &      filterDescr) {} 
    
    //____________________________________________________________________________
    //

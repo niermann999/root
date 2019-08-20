@@ -220,7 +220,7 @@ TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer,
 //____________________________________________________________________________
 //FIXME: Go to shared_ptr implementation
 template <typename AFloat>
-TCudaTensor<AFloat>::TCudaTensor(const TCudaTensor<AFloat>& oldTensor) :
+TCudaTensor<AFloat>::TCudaTensor(const TCudaTensor<AFloat>& oldTensor, size_t /*dim*/) :
    TCudaTensor(oldTensor.fShape, oldTensor.fMemoryLayout, oldTensor.fDevice, oldTensor.fStreamIndx)
 {
    // No deep copy
