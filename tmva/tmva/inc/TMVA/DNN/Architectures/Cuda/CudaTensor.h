@@ -99,15 +99,15 @@ private:
    //static std::vector<std::vector<int> > fInstances;
    static std::vector<int> fInstances;
 
-   /** The shape (size of dimensions) needs to be ordered as no. channels,
+   /** The shape vector (size of dimensions) needs to be ordered as no. channels,
     *  image dimensions.
     */
-   Shape_t      fShape;            ///< batch size, no. of channels and sizes of subdimensions
-   Shape_t      fStrides;         ///< Strides between tensor dimensions (always assume dense, non overlapping tensor)
-   size_t              fNDim;             ///< Dimension of the tensor (first dimension is the batch size, second is the no. channels)
-   size_t              fSize;             ///< No. of elements
-   int                 fDevice;           ///< Device associated with current tensor instance
-   int                 fStreamIndx;       ///< Cuda stream associated with current instance
+   Shape_t      fShape;            ///< spatial subdimensions
+   Shape_t      fStrides;          ///< Strides between tensor dimensions (always assume dense, non overlapping tensor)
+   size_t       fNDim;             ///< Dimension of the tensor (first dimension is the batch size, second is the no. channels)
+   size_t       fSize;             ///< No. of elements
+   int          fDevice;           ///< Device associated with current tensor instance
+   int          fStreamIndx;       ///< Cuda stream associated with current instance
 
    cudnnTensorDescriptor_t   fTensorDescriptor;
    TCudaDeviceBuffer<AFloat> fElementBuffer;
@@ -140,7 +140,7 @@ public:
 
    TCudaTensor(size_t bsize, size_t csize, size_t hwsize, MemoryLayout memlayout = MemoryLayout::ColumnMajor,  int deviceIndx = 0, int streamIndx = 0) : 
 
-      TCudaTensor( { bsize, hwsize, csize }, memlayout, deviceIndx, streamIndx)
+      TCudaTensor( { bsize, csize, hwsize }, memlayout, deviceIndx, streamIndx)
      {
         if (fMemoryLayout == MemoryLayout::ColumnMajor)
            (*this) = TCudaTensor(fElementBuffer,  { csize, hwsize, bsize}, memlayout, deviceIndx, streamIndx);
@@ -148,7 +148,7 @@ public:
 
    TCudaTensor(size_t bsize, size_t csize, size_t hsize, size_t wsize, MemoryLayout memlayout = MemoryLayout::ColumnMajor,  int deviceIndx = 0, int streamIndx = 0) : 
 
-      TCudaTensor( { bsize, hsize, wsize, csize}, memlayout, deviceIndx, streamIndx)
+      TCudaTensor( {bsize, csize, hsize, wsize}, memlayout, deviceIndx, streamIndx)
      {
         if (memlayout == MemoryLayout::ColumnMajor)
            *this =  TCudaTensor(fElementBuffer, { csize, hsize, wsize, bsize}, memlayout, deviceIndx, streamIndx);
@@ -156,7 +156,7 @@ public:
 
    TCudaTensor(size_t n, size_t m, MemoryLayout memlayout = MemoryLayout::ColumnMajor,  int deviceIndx = 0, int streamIndx = 0) : 
       //   TCudaTensor( {n,m}, memlayout, deviceIndx, streamIndx) :
-      TCudaTensor( { n, m}, memlayout, deviceIndx, streamIndx)
+      TCudaTensor( {n, m}, memlayout, deviceIndx, streamIndx)
      {}
 
    TCudaTensor(const TCudaMatrix<AFloat> & m, size_t dim = 2); 
@@ -170,9 +170,7 @@ public:
 
    /** Convert cuda matrix to Root TMatrix. Performs synchronous data transfer. */
    //operator Experimental::RTensor<AFloat>() const;
-
-   /*inline cudaStream_t GetComputeStream() const;
-   inline void         SetComputeStream(cudaStream_t stream);*/
+   
    /** Set the return buffer on the device to the specified value. This is
     * required for example for reductions in order to initialize the
     * accumulator. */
@@ -226,6 +224,7 @@ public:
 
    // FIXME: Change to on device division and reduction
    bool isEqual (TCudaTensor<AFloat> & other) {
+   
       if (fSize != other.GetSize()) return false;
       
       /*TCudaHostBuffer<AFloat> hostBufferThis(fSize);
@@ -233,8 +232,8 @@ public:
       fElementBuffer.CopyTo(hostBufferThis);
       other.GetDeviceBuffer().CopyTo(hostBufferOther);*/
       
-      AFloat * hostBufferThis = new AFloat[fSize];
-      AFloat * hostBufferOther = new AFloat[fSize]; 
+      AFloat hostBufferThis [fSize];
+      AFloat hostBufferOther[fSize]; 
       cudaMemcpy(hostBufferThis, fElementBuffer, fSize * sizeof(AFloat),
                  cudaMemcpyDeviceToHost);
       cudaMemcpy(hostBufferOther, other.GetDeviceBuffer(), fSize * sizeof(AFloat),
@@ -251,7 +250,8 @@ public:
       
       /*TCudaHostBuffer<AFloat> hostBufferThis (fSize);
       fElementBuffer.CopyTo(hostBufferThis);*/
-      AFloat * hostBufferThis = new AFloat[fSize];
+      
+      AFloat hostBufferThis[fSize];
       cudaMemcpy(hostBufferThis, fElementBuffer, fSize * sizeof(AFloat),
                  cudaMemcpyDeviceToHost);
       
@@ -315,6 +315,14 @@ public:
       return TCudaMatrix<AFloat>(fElementBuffer, GetHSize(), GetWSize());
    }
 
+   static inline std::vector<std::size_t> ComputeStridesFromShape(const std::vector<std::size_t> &shape, 
+   bool rowmajorLayout);
+   
+   void Reshape(const Shape_t & newShape) {
+      fShape   = newShape;
+      fStrides = ComputeStridesFromShape(fShape, fMemoryLayout == MemoryLayout::RowMajor);
+   }
+   
    // return slice of tensor
    // return slices in the first dimension (if row wise) or last dimension if colun wise
    // so single event slides

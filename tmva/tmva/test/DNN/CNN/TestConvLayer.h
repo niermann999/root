@@ -32,6 +32,7 @@
 #include <cmath>
 
 #include "TestConvNet.h"
+#include "TMVA/DNN/Architectures/Cudnn.h"
 
 using namespace TMVA::DNN;
 using namespace TMVA::DNN::CNN;
@@ -101,6 +102,20 @@ bool testForward1()
 
            {12}
    };
+   
+   double biases_cudnn[][9] = {
+           {45,45,45,
+            45,45,45,
+            45,45,45},
+
+           {60,60,60,
+            60,60,60,
+            60,60,60},
+
+           {12,12,12,
+            12,12,12,
+            12,12,12}
+   };
 
    double expected[][9] = {
 
@@ -137,7 +152,7 @@ bool testForward1()
          inputEvent(i, j) = img[i][j];
       }
    }
-   Tensor_t input(inputEvent, 3);
+   Tensor_t input(inputEvent, 4);
 
    Matrix_t weightsMatrix(numberFilters, fltHeight * fltWidth * imgDepth);
    Matrix_t biasesMatrix(numberFilters, 1);
@@ -159,6 +174,7 @@ bool testForward1()
       }
    }
    Tensor_t expectedOutput (outputEvent, 3);
+   std::cout<< "Calling TestNet.h" << std::endl;
 
    bool status = testConvLayerForward<Architecture>(input, expectedOutput, weightsMatrix, biasesMatrix, imgHeight,
                                                     imgWidth, imgDepth, fltHeight, fltWidth, numberFilters, strideRows,
@@ -167,6 +183,131 @@ bool testForward1()
    return status;
 }
 
+template<typename Architecture>
+bool testForward1_cudnn()
+{
+   double img[][16] = {
+           {166, 212, 213, 150,
+            114, 119, 109, 115,
+             88, 144, 227, 208,
+            208, 235,  57,  58},
+
+           { 57,  255, 184, 162,
+            204,  220,  11, 192,
+            183,  174,   2, 153,
+            184,  175,  10,  55}
+   };
+
+   double weights[][8] = {
+           {2.0,  3.0,  0.5, -1.5,
+            1.0,  1.5, -2.0, -3.0},
+
+           {-0.5,  1.0,  2.5, -1.0,
+             2.0,  1.5, -0.5,  1.0},
+
+           {-1.0, -2.0, 1.5, 0.5,
+             2.0, -1.5, 0.5, 1.0}
+   };
+
+   double biases[][9] = {
+           {45, 45, 45,
+            45, 45, 45,
+            45, 45, 45},
+
+           {60, 60, 60, 
+            60, 60, 60,
+            60, 60, 60},
+
+           {12, 12, 12,
+            12, 12, 12,
+            12, 12, 12}
+   };
+   
+   /*double biases[][1] = {
+           {45},
+           {60},
+           {12}
+   };*/
+
+   double expected[][9] = {
+
+           {263.0, 1062.0,  632.0,
+            104.0,  224.0,  245.5,
+            -44.5,  843.0, 1111.0},
+
+           { 969.5, 1042.5, 1058.5,
+            1018.5,  614.0,  942.0,
+            1155.0, 1019.0,  522.5},
+
+           {-294.0, -38.0,   42.5,
+             207.5, 517.0,    5.5,
+             437.5, 237.5, -682.0}
+    };
+
+
+   size_t imgDepth = 2;
+   size_t imgHeight = 4;
+   size_t imgWidth = 4;
+   size_t numberFilters = 3;
+   size_t fltHeight = 2;
+   size_t fltWidth = 2;
+   size_t strideRows = 1;
+   size_t strideCols = 1;
+   size_t zeroPaddingHeight = 0;
+   size_t zeroPaddingWidth = 0;
+
+   std::vector<size_t> inputShape {1, imgDepth, imgHeight, imgWidth};
+   TCudaHostBuffer<Double_t> input_hostbuffer(imgDepth * imgHeight * imgWidth);
+   for (size_t i = 0; i < imgDepth; i++) {
+      for (size_t j = 0; j < imgHeight * imgWidth; j++) {
+         input_hostbuffer[i*imgHeight * imgWidth + j] = img[i][j];
+      }
+   }
+   std::vector<TCudaTensor<Double_t> > input;
+   input.emplace_back(input_hostbuffer, inputShape);
+
+   std::vector<size_t> weightShape {numberFilters, imgDepth, fltHeight, fltWidth};
+   TCudaHostBuffer<Double_t> weight_hostbuffer(numberFilters * fltHeight * fltWidth * imgDepth);
+   for (size_t i = 0; i < numberFilters; i++) {
+       for (size_t j = 0; j < fltHeight * fltWidth * imgDepth; j++){
+           weight_hostbuffer[i*fltHeight * fltWidth * imgDepth + j] = weights[i][j];
+       }
+   }
+   TCudaTensor<Double_t> weightsTensor(weight_hostbuffer, weightShape);
+   
+   size_t height = calculateDimension(imgHeight, fltHeight, zeroPaddingHeight, strideRows);
+   size_t width = calculateDimension(imgWidth, fltWidth, zeroPaddingWidth, strideCols);
+   
+   std::vector<size_t> biasesShape {1, numberFilters, height, width};
+   TCudaHostBuffer<Double_t> biases_hostbuffer(numberFilters * height * width);
+   
+   for (size_t i = 0; i < numberFilters; i++) {
+      for (size_t j = 0; j < height * width; j++) {
+         biases_hostbuffer[i * height * width + j] = biases[i][j];
+      }
+   }
+   TCudaTensor<Double_t> biasesTensor(biases_hostbuffer, biasesShape);
+   
+   std::vector<TCudaTensor<Double_t>> computedDerivatives;
+   std::vector<TCudaTensor<Double_t>> computedOutput;
+
+   TConvParams params(1, imgDepth, imgHeight, imgWidth, numberFilters, fltHeight, fltWidth, strideRows,
+                      strideCols, zeroPaddingHeight, zeroPaddingWidth);
+
+   std::vector<TCudaTensor<Double_t>> forwardMatrices;
+   
+   TCudnn<Double_t>::ConvLayerForward(computedOutput, computedDerivatives, input, weightsTensor, biasesTensor, params,
+                                      EActivationFunction::kIdentity, forwardMatrices);
+                                      
+   TCudaHostBuffer<Double_t> expectedOutput_buffer(numberFilters * height * width);                                  
+   for (size_t i = 0; i < numberFilters; i++) {
+      for (size_t j = 0; j < height * width; j++) {
+         expectedOutput_buffer[i * height * width + j] = expected[i][j];
+      }
+   }
+
+   return computedOutput[0].isEqual(expectedOutput_buffer, expectedOutput_buffer.GetSize());
+}
 /*************************************************************************
 * Test 1: Backward Propagation
 *  batch size = 1

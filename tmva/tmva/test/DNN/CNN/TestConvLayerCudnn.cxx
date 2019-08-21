@@ -46,7 +46,7 @@ int main()
     bool status = true;
 
     std::cout << "Test Forward-Propagation 1: " << std::endl;
-    status &= testForward1<TCudnn<Scalar_t>>();
+    status &= testForward1_cudnn<TCudnn<Scalar_t>>();
     if (!status) {
         std::cerr << "ERROR - Forward-Propagation 1 failed " << std::endl;
         return -1;

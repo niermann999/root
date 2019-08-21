@@ -203,13 +203,13 @@ void TCudnn<AFloat>::RotateWeights(TCudaTensor<AFloat> &A,
 template <typename AFloat>
 void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
                                       Tensor_t & derivatives,
-                                     const Tensor_t &input,
-                                     const Matrix_t &weights, const Matrix_t & biases,
-                                     const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
-                                     Tensor_t & inputPrime,
-                                     const ConvDescriptors_t & descriptors)
-//                                     const AFloat alpha,
-//                                     const AFloat beta)
+                                      const Tensor_t & input,
+                                      const Matrix_t & weights, const Matrix_t & biases,
+                                      const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
+                                      Tensor_t & inputPrime,
+                                      const ConvDescriptors_t & descriptors)
+//                                    const AFloat alpha,
+//                                    const AFloat beta)
 {
    AFloat alpha = 1.0; 
    AFloat beta  = 0.0; 
@@ -218,30 +218,25 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
    cudnnDataType_t   cudnnDataType;
    if      (std::is_same<AFloat, double>::value) { cudnnDataType = CUDNN_DATA_DOUBLE;}
    else if (std::is_same<AFloat, float>::value)  { cudnnDataType = CUDNN_DATA_FLOAT;}
-   
-   //cudnnFilterDescriptor_t fFilterDescriptor;           // Layout of the Kernel
-   // Set the filter from TCudaMatrix instance first
-   //CUDNNCHECK(cudnnCreateFilterDescriptor(&FilterDescriptor));
+  
+   // Set the  filter parameters
    CUDNNCHECK(cudnnSetFilter4dDescriptor(descriptors.WeightsDescriptor,
                                          cudnnDataType,
-                                         CUDNN_TENSOR_NCHW,
+                                         CUDNN_TENSOR_NHWC,
                                          params.numberFilters,
                                          params.inputDepth,
                                          params.filterHeight,
                                          params.filterWidth));
                                          
-   // Set the convolution
-   /*cudnnConvolutionDescriptor_t fConvolutionDescriptor;      // Params of the convolution (can be reused in backward pass)
-   CUDNNCHECK(cudnnCreateConvolutionDescriptor(&fConvolutionDescriptor));*/
-    
-   CUDNNCHECK(cudnnSetConvolution2dDescriptor(descriptors.LayerDescriptor,
+   // Set the convolution parameters
+   CUDNNCHECK(cudnnSetConvolution2dDescriptor(descriptors.LayerDescriptor,//descriptors.LayerDescriptor,
                                               params.paddingHeight,
                                               params.paddingWidth,
                                               params.strideRows,
                                               params.strideCols,
-                                              0,                 //Dilation height
-                                              0,                 //Dilation width
-                                              CUDNN_CONVOLUTION, // Convolution instead of cross correlation
+                                              1,                 //Dilation height
+                                              1,                 //Dilation width
+                                              CUDNN_CROSS_CORRELATION,
                                               cudnnDataType));
                                               
    // Get the dimensions of the output tensor
@@ -253,8 +248,6 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
                                                     (int*)&outputShape[1],
                                                     (int*)&outputShape[2],
                                                     (int*)&outputShape[3]));
-   // size_t size = 1;
-   // for (const auto& subDim: outputShape) size *= subDim;
    TCudaTensor<AFloat> outputTensor (outputShape);
    
    // cuDNN decides on which algorithm to use
@@ -298,7 +291,6 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
                                       outputTensor.GetDataPointer()));
                                                                         
    // Apply activation
-   //evaluate<TCudnn<AFloat> >(outputTensor, activFunc);
    TCudnn<AFloat>::Activation(outputTensor, activFunc, descriptors.HelperDescriptor);
 
    cudaFree(&workspace);

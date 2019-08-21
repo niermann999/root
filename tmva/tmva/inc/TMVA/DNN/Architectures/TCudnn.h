@@ -358,7 +358,6 @@ public:
                                 const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
                                 Tensor_t & /* inputPrime */,
                                 const ConvDescriptors_t & descriptors );
-                                //CNN::TDescriptors<CNN::TConvLayer<TCudnn<AFloat>>>
                                 //const AFloat alpha = 1,
                                 //const AFloat beta  = 1);
 
