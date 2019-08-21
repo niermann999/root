@@ -54,19 +54,37 @@ void TCudnn<AFloat>::Activation(TCudaTensor<AFloat> & A, EActivationFunction act
 }
 
 //______________________________________________________________________________
-/*template<typename AFloat>
-void TCudnn<AFloat>::IdentityDerivative(TCudaTensor<AFloat> & B,
-                                           const TCudaTensor<AFloat> & A)
+template<typename AFloat>
+void TCudnn<AFloat>::Derivatives(const TCudaTensor<AFloat> & B, TCudaTensor<AFloat> & A, EActivationFunction activFunct, ActivationDescriptor_t activationDescr,  const double coef, const AFloat alpha, const AFloat beta)
 {
-   dim3 blockDims = TDevice::BlockDims2D();
-   dim3 gridDims  = TDevice::GridDims2D(B);
-   cudaStream_t s = A.GetComputeStream();
-   ::TMVA::DNN::Cuda::IdentityDerivative<<<gridDims, blockDims, 0, s>>>(
-       B.GetDataPointer(),
-       (int) B.GetNrows(),
-       (int) B.GetNcols());
-   B.SetComputeStream(s);
-}*/
+   cudnnActivationMode_t activationMode;
+   switch(activFunct) {
+      case EActivationFunction::kIdentity: return; // Identity activation only works for cudnnConvolutionBiasActivationForward()
+      case EActivationFunction::kRelu:     activationMode = CUDNN_ACTIVATION_RELU;    break;
+      case EActivationFunction::kSigmoid:  activationMode = CUDNN_ACTIVATION_SIGMOID; break;
+      case EActivationFunction::kTanh:     activationMode = CUDNN_ACTIVATION_TANH;    break;
+      // The activations otherwise used are not supported by cuDNN
+      default:    return;    
+   };
+   
+   CUDNNCHECK(cudnnSetActivationDescriptor(activationDescr,
+                                           activationMode,
+                                           CUDNN_PROPAGATE_NAN,
+                                           coef));
+                                           
+   /*CUDNNCHECK(cudnnActivationBackward(B.GetCudnnHandle(),
+                                      activationDescr,
+                                      &alpha,
+                                      A.GetTensorDescriptor(),
+                                      A.GetDataPointer(),
+    const cudnnTensorDescriptor_t    dyDesc,
+    const void                      *dy,
+    const cudnnTensorDescriptor_t    xDesc,
+    const void                      *x,
+    const void                      *beta,
+    const cudnnTensorDescriptor_t    dxDesc,
+    void                            *dx));*/
+}
 
 //______________________________________________________________________________
 template<typename AFloat>
@@ -76,20 +94,13 @@ void TCudnn<AFloat>::Relu(TCudaTensor<AFloat> & A, ActivationDescriptor_t activa
 }
 
 //______________________________________________________________________________
-/*template<typename AFloat>
-void TCudnn<AFloat>::ReluDerivative(TCudaTensor<AFloat> & B,
-                                       const TCudaTensor<AFloat> & A)
+template<typename AFloat>
+void TCudnn<AFloat>::ReluDerivative(TCudaTensor<AFloat> & B, const TCudaTensor<AFloat> & A, 
+                                    ActivationDescriptor_t activationDescr, const double coef, 
+                                    const AFloat alpha, const AFloat beta)
 {
-   dim3 blockDims = TDevice::BlockDims2D();
-   dim3 gridDims  = TDevice::GridDims2D(B);
-   cudaStream_t s = A.GetComputeStream();
-   ::TMVA::DNN::Cuda::ReluDerivative<<<gridDims, blockDims, 0, s>>>(
-       B.GetDataPointer(),
-       A.GetDataPointer(),
-       (int) A.GetNrows(),
-       (int) A.GetNcols());
-   B.SetComputeStream(s);
-}*/
+   Derivatives(A, B, EActivationFunction::kRelu, activationDescr, coef, alpha, beta);
+}
 
 //______________________________________________________________________________
 template<typename AFloat>
@@ -99,20 +110,13 @@ void TCudnn<AFloat>::Sigmoid(TCudaTensor<AFloat> & A, ActivationDescriptor_t act
 }
 
 //______________________________________________________________________________
-/*template<typename AFloat>
-void TCudnn<AFloat>::SigmoidDerivative(TCudaTensor<AFloat> & B,
-                                          const TCudaTensor<AFloat> & A)
+template<typename AFloat>
+void TCudnn<AFloat>::SigmoidDerivative(TCudaTensor<AFloat> & B, const TCudaTensor<AFloat> & A, 
+                                       ActivationDescriptor_t activationDescr, const double coef, 
+                                       const AFloat alpha, const AFloat beta)
 {
-   dim3 blockDims = TDevice::BlockDims2D();
-   dim3 gridDims  = TDevice::GridDims2D(B);
-   cudaStream_t s = A.GetComputeStream();
-   ::TMVA::DNN::Cuda::SigmoidDerivative<<<gridDims, blockDims, 0, s>>>(
-       B.GetDataPointer(),
-       A.GetDataPointer(),
-       (int) A.GetNrows(),
-       (int) A.GetNcols());
-   B.SetComputeStream(s);
-}*/
+   Derivatives(A, B, EActivationFunction::kSigmoid, activationDescr, coef, alpha, beta);
+}
 
 //______________________________________________________________________________
 template<typename AFloat>
@@ -122,23 +126,16 @@ void TCudnn<AFloat>::Tanh(TCudaTensor<AFloat> & A, ActivationDescriptor_t activa
 }
 
 //______________________________________________________________________________
-/*template<typename AFloat>
-void TCudnn<AFloat>::TanhDerivative(TCudaTensor<AFloat> & B,
-                                       const TCudaTensor<AFloat> & A)
+template<typename AFloat>
+void TCudnn<AFloat>::TanhDerivative(TCudaTensor<AFloat> & B, const TCudaTensor<AFloat> & A, 
+                                    ActivationDescriptor_t activationDescr, const double coef, 
+                                    const AFloat alpha, const AFloat beta)
 {
-   dim3 blockDims = TDevice::BlockDims2D();
-   dim3 gridDims  = TDevice::GridDims2D(B);
-   cudaStream_t s = A.GetComputeStream();
-   ::TMVA::DNN::Cuda::TanhDerivative<<<gridDims, blockDims, 0, s>>>(
-       B.GetDataPointer(),
-       A.GetDataPointer(),
-       (int) A.GetNrows(),
-       (int) A.GetNcols());
-   B.SetComputeStream(s);
+   Derivatives(A, B, EActivationFunction::kTanh, activationDescr, coef, alpha, beta);
 }
 
 //______________________________________________________________________________
-template<typename AFloat>
+/*template<typename AFloat>
 void TCudnn<AFloat>::SymmetricRelu(TCudaTensor<AFloat> & A)
 {
    dim3 blockDims = TDevice::BlockDims2D();

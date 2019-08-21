@@ -222,12 +222,6 @@ bool testForward1_cudnn()
             12, 12, 12,
             12, 12, 12}
    };
-   
-   /*double biases[][1] = {
-           {45},
-           {60},
-           {12}
-   };*/
 
    double expected[][9] = {
 
@@ -310,7 +304,6 @@ bool testForward1_cudnn()
       }
    }
        
-   //computedOutput.Print();
    return computedOutput.isEqual(expectedOutput_buffer, expectedOutput_buffer.GetSize());
 }
 /*************************************************************************

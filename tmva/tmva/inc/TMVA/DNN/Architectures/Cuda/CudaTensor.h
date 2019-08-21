@@ -222,7 +222,7 @@ public:
     *  on all streams. Only used for testing. */
    //TCudaDeviceReference<AFloat> operator()(size_t i, size_t j) const;
 
-   // FIXME: Change to on device division and reduction
+   // FIXME: Change to on device division and reduction + unique_ptr
    bool isEqual (TCudaTensor<AFloat> & other) {
    
       if (fSize != other.GetSize()) return false;

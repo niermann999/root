@@ -81,16 +81,20 @@ public:
    template<typename Layer_t>
    static void InitializeCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L = nullptr);
    
+   static void InitializeDescriptor(EmptyDescriptor_t &       emptyDescr) {}      // Does nothing
    static void InitializeDescriptor(ActivationDescriptor_t &  activationDescr);
    static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr);
    static void InitializeDescriptor(FilterDescriptor_t &      filterDescr);
+   static void InitializeDescriptor(PoolingDescriptor_t &     poolingDescr);
    
    template<typename Layer_t>
    static void ReleaseCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L = nullptr);
    
+   static void ReleaseDescriptor(EmptyDescriptor_t &       emptyDescr) {}        // Does nothing
    static void ReleaseDescriptor(ActivationDescriptor_t &  activationDescr);
    static void ReleaseDescriptor(ConvolutionDescriptor_t & convolutionDescr);
    static void ReleaseDescriptor(FilterDescriptor_t &      filterDescr);
+   static void ReleaseDescriptor(PoolingDescriptor_t &     poolingDescr);
    
    //____________________________________________________________________________
    //
@@ -156,28 +160,46 @@ public:
     * and writes the results into the result matrix.
     */
    ///@{
-   static void Identity(Tensor_t & B);
-   /*static void IdentityDerivative(Tensor_t & B,
-                                  const Tensor_t & A);*/
+   static void Identity(Tensor_t & B) {}
+   static void IdentityDerivative(Tensor_t & B,
+                                  const Tensor_t & A) {}
 
-   static void Activation(Tensor_t & B, EActivationFunction activFunct, ActivationDescriptor_t activationDescr,
-                          const double coef = 0.0, const AFloat alpha = 1, const AFloat beta = 1);
+   static void Activation(Tensor_t & B, EActivationFunction activFunct,
+                          ActivationDescriptor_t activationDescr,
+                          const double coef = 0.0, const AFloat alpha = 1, 
+                          const AFloat beta = 1);
+                          
+   static void Derivatives(const Tensor_t & B, Tensor_t & A, EActivationFunction activFunct,
+                           ActivationDescriptor_t activationDescr,
+                           const double coef = 0.0, const AFloat alpha = 1, 
+                           const AFloat beta = 1);
                     
-   static void Relu(Tensor_t & B, ActivationDescriptor_t activationDescr, const double coef = 0.0, 
-                    const AFloat alpha = 1, const AFloat beta = 1);
-                    
-   /*static void ReluDerivative(Tensor_t & B,
-                              const Tensor_t & A);*/
+   static void Relu(Tensor_t & B, ActivationDescriptor_t activationDescr, 
+                    const double coef = 0.0, const AFloat alpha = 1, 
+                    const AFloat beta = 1);          
+   static void ReluDerivative(Tensor_t & B, const Tensor_t & A, 
+                              ActivationDescriptor_t activationDescr, 
+                              const double coef = 0.0, 
+                              const AFloat alpha = 1, 
+                              const AFloat beta = 1);
 
-   static void Sigmoid(Tensor_t & B, ActivationDescriptor_t activationDescr, const double coef = 0.0, 
-                    const AFloat alpha = 1, const AFloat beta = 1);
-   /*static void SigmoidDerivative(Tensor_t & B,
-                                 const Tensor_t & A);*/
+   static void Sigmoid(Tensor_t & B, ActivationDescriptor_t activationDescr,
+                       const double coef = 0.0, const AFloat alpha = 1,
+                       const AFloat beta = 1);
+   static void SigmoidDerivative(Tensor_t & B, const Tensor_t & A, 
+                                 ActivationDescriptor_t activationDescr, 
+                                 const double coef = 0.0, 
+                                 const AFloat alpha = 1, 
+                                 const AFloat beta = 1);
 
-   static void Tanh(Tensor_t & B, ActivationDescriptor_t activationDescr, const double coef = 0.0, 
-                    const AFloat alpha = 1, const AFloat beta = 1);
-   /*static void TanhDerivative(Tensor_t & B,
-                              const Tensor_t & A);*/
+   static void Tanh(Tensor_t & B, ActivationDescriptor_t activationDescr, 
+                    const double coef = 0.0, const AFloat alpha = 1,
+                    const AFloat beta = 1);
+   static void TanhDerivative(Tensor_t & B, const Tensor_t & A, 
+                              ActivationDescriptor_t activationDescr, 
+                              const double coef = 0.0, 
+                              const AFloat alpha = 1, 
+                              const AFloat beta = 1);
 
    //static void SymmetricRelu(Tensor_t & B);
    /*static void SymmetricReluDerivative(Tensor_t & B,
@@ -616,6 +638,12 @@ void TCudnn<AFloat>::InitializeDescriptor(FilterDescriptor_t & filterDescr) {
 }
 
 //____________________________________________________________________________
+template <typename AFloat>
+void TCudnn<AFloat>::InitializeDescriptor(PoolingDescriptor_t & poolingDescr) {
+   CUDNNCHECK(cudnnCreatePoolingDescriptor(&poolingDescr));
+}
+
+//____________________________________________________________________________
 template<typename AFloat>
 template<typename Layer_t>
 void TCudnn<AFloat>::ReleaseCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L) {
@@ -623,8 +651,6 @@ void TCudnn<AFloat>::ReleaseCNNDescriptors(CNN::TDescriptors * & descriptors, La
    ReleaseDescriptor(cnnDescriptors->LayerDescriptor);
    ReleaseDescriptor(cnnDescriptors->HelperDescriptor);
    ReleaseDescriptor(cnnDescriptors->WeightsDescriptor);
-   
-   delete descriptors;
 }
    
 //____________________________________________________________________________
@@ -643,6 +669,12 @@ void TCudnn<AFloat>::ReleaseDescriptor(ConvolutionDescriptor_t & convolutionDesc
 template <typename AFloat>
 void TCudnn<AFloat>::ReleaseDescriptor(FilterDescriptor_t & filterDescr) {
    CUDNNCHECK(cudnnDestroyFilterDescriptor(filterDescr));
+}
+
+//____________________________________________________________________________
+template <typename AFloat>
+void TCudnn<AFloat>::ReleaseDescriptor(PoolingDescriptor_t & poolingDescr) {
+   CUDNNCHECK(cudnnDestroyPoolingDescriptor(poolingDescr));
 }
 
 //____________________________________________________________________________

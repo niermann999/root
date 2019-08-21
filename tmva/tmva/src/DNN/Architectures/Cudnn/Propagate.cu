@@ -202,7 +202,7 @@ void TCudnn<AFloat>::RotateWeights(TCudaTensor<AFloat> &A,
 
 template <typename AFloat>
 void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
-                                      Tensor_t & derivatives,
+                                      Tensor_t & inputActivation,
                                       const Tensor_t & input,
                                       const Matrix_t & weights, const Matrix_t & biases,
                                       const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
@@ -293,6 +293,9 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
                                                                         
    // Apply biases
    AddConvBiases(outputTensor, biases);
+   
+   // Store the conv output before application of activation
+   TCudnn<AFloat>::Copy(inputActivation, outputTensor);
    
    // Apply activation
    TCudnn<AFloat>::Activation(outputTensor, activFunc, descriptors.HelperDescriptor);
