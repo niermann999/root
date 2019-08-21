@@ -85,6 +85,13 @@ public:
    static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr);
    static void InitializeDescriptor(FilterDescriptor_t &      filterDescr);
    
+   template<typename Layer_t>
+   static void ReleaseCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L = nullptr);
+   
+   static void ReleaseDescriptor(ActivationDescriptor_t &  activationDescr);
+   static void ReleaseDescriptor(ConvolutionDescriptor_t & convolutionDescr);
+   static void ReleaseDescriptor(FilterDescriptor_t &      filterDescr);
+   
    //____________________________________________________________________________
    //
    // Propagation
@@ -606,6 +613,36 @@ void TCudnn<AFloat>::InitializeDescriptor(ConvolutionDescriptor_t & convolutionD
 template <typename AFloat>
 void TCudnn<AFloat>::InitializeDescriptor(FilterDescriptor_t & filterDescr) {
    CUDNNCHECK(cudnnCreateFilterDescriptor(&filterDescr));
+}
+
+//____________________________________________________________________________
+template<typename AFloat>
+template<typename Layer_t>
+void TCudnn<AFloat>::ReleaseCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L) {
+   auto cnnDescriptors = static_cast<ConvDescriptors_t &>(descriptors);
+   ReleaseDescriptor(cnnDescriptors->LayerDescriptor);
+   ReleaseDescriptor(cnnDescriptors->HelperDescriptor);
+   ReleaseDescriptor(cnnDescriptors->WeightsDescriptor);
+   
+   delete descriptors;
+}
+   
+//____________________________________________________________________________
+template <typename AFloat>
+void TCudnn<AFloat>::ReleaseDescriptor(ActivationDescriptor_t & activationDescr) {
+   CUDNNCHECK(cudnnDestroyActivationDescriptor(activationDescr));
+}
+
+//____________________________________________________________________________
+template <typename AFloat>
+void TCudnn<AFloat>::ReleaseDescriptor(ConvolutionDescriptor_t & convolutionDescr) {
+   CUDNNCHECK(cudnnDestroyConvolutionDescriptor(convolutionDescr));
+}
+   
+//____________________________________________________________________________
+template <typename AFloat>
+void TCudnn<AFloat>::ReleaseDescriptor(FilterDescriptor_t & filterDescr) {
+   CUDNNCHECK(cudnnDestroyFilterDescriptor(filterDescr));
 }
 
 //____________________________________________________________________________

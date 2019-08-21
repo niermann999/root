@@ -572,6 +572,9 @@ public:
    template<typename Layer_t>
    static void InitializeCNNDescriptors(CNN::TDescriptors *& /*descriptors*/, Layer_t *L = nullptr) {}
    
+   template<typename Layer_t>
+   static void ReleaseCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L = nullptr) {}
+   
    //____________________________________________________________________________
    //
    // Propagation

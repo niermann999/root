@@ -97,7 +97,8 @@ private:
    TDescriptors * fDescriptors = nullptr;  ///< Keeps the convolution, activations and filter descriptors
    void * fCudnnWorkspace = nullptr; ///< On device memory needed for cudnn convolution operation
 
-   void InitializeDescriptors(); 
+   void InitializeDescriptors();
+   void ReleaseDescriptors();
 public:
    /*! Constructor. */
    TConvLayer(size_t BatchSize, size_t InputDepth, size_t InputHeight, size_t InputWidth, size_t Depth, EInitialization Init,
@@ -292,12 +293,10 @@ TConvLayer<Architecture_t>::TConvLayer(const TConvLayer &convLayer)
 template <typename Architecture_t>
 TConvLayer<Architecture_t>::~TConvLayer()
 {
-   if (fDescriptors) delete fDescriptors;
-   
+   //if (fDescriptors) delete fDescriptors;
+   if (fDescriptors) ReleaseDescriptors();
+    
    //if (fCudnnWorkspace) cudaFree(fCudnnWorkspace);
-   // Release cuDNN resources
-   //CUDNNCHECK(cudnnDestroyFilterDescriptor(fFilterDescriptor));
-   //CUDNNCHECK(cudnnDestroyConvolutionDescriptor(fConvolutionDescriptor));
 }
 
 //______________________________________________________________________________
@@ -460,6 +459,11 @@ size_t TConvLayer<Architecture_t>::calculateNLocalViews(size_t inputHeight, size
 template <typename Architecture_t>
 void TConvLayer<Architecture_t>::InitializeDescriptors() {
       Architecture_t::InitializeCNNDescriptors(fDescriptors, this);
+}
+
+template <typename Architecture_t>
+void TConvLayer<Architecture_t>::ReleaseDescriptors() {
+      Architecture_t::ReleaseCNNDescriptors(fDescriptors, this);
 }
 
 } // namespace CNN
