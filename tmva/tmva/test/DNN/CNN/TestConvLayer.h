@@ -32,7 +32,7 @@
 #include <cmath>
 
 #include "TestConvNet.h"
-#include "TMVA/DNN/Architectures/Cudnn.h"
+#include "TMVA/DNN/Architectures/TCudnn.h"
 
 using namespace TMVA::DNN;
 using namespace TMVA::DNN::CNN;
@@ -263,8 +263,7 @@ bool testForward1_cudnn()
          input_hostbuffer[i*imgHeight * imgWidth + j] = img[i][j];
       }
    }
-   std::vector<TCudaTensor<Double_t> > input;
-   input.emplace_back(input_hostbuffer, inputShape);
+   TCudaTensor<Double_t> input(input_hostbuffer, inputShape, MemoryLayout::RowMajor, 0, 0);
 
    std::vector<size_t> weightShape {numberFilters, imgDepth, fltHeight, fltWidth};
    TCudaHostBuffer<Double_t> weight_hostbuffer(numberFilters * fltHeight * fltWidth * imgDepth);
@@ -273,7 +272,7 @@ bool testForward1_cudnn()
            weight_hostbuffer[i*fltHeight * fltWidth * imgDepth + j] = weights[i][j];
        }
    }
-   TCudaTensor<Double_t> weightsTensor(weight_hostbuffer, weightShape);
+   TCudaTensor<Double_t> weightsTensor(weight_hostbuffer, weightShape, MemoryLayout::RowMajor, 0, 0);
    
    size_t height = calculateDimension(imgHeight, fltHeight, zeroPaddingHeight, strideRows);
    size_t width = calculateDimension(imgWidth, fltWidth, zeroPaddingWidth, strideCols);
@@ -286,18 +285,23 @@ bool testForward1_cudnn()
          biases_hostbuffer[i * height * width + j] = biases[i][j];
       }
    }
-   TCudaTensor<Double_t> biasesTensor(biases_hostbuffer, biasesShape);
+   TCudaTensor<Double_t> biasesTensor(biases_hostbuffer, biasesShape, MemoryLayout::RowMajor, 0, 0);
    
-   std::vector<TCudaTensor<Double_t>> computedDerivatives;
-   std::vector<TCudaTensor<Double_t>> computedOutput;
+   TCudaTensor<Double_t> computedDerivatives;
+   TCudaTensor<Double_t> computedOutput;
 
    TConvParams params(1, imgDepth, imgHeight, imgWidth, numberFilters, fltHeight, fltWidth, strideRows,
                       strideCols, zeroPaddingHeight, zeroPaddingWidth);
 
-   std::vector<TCudaTensor<Double_t>> forwardMatrices;
+   TCudaTensor<Double_t> forwardMatrix;
    
+   TDescriptors * convDescriptors = nullptr;
+   TConvLayer<TCudnn<Double_t>> *layer = nullptr;
+   TCudnn<Double_t>::InitializeCNNDescriptors(convDescriptors, layer);
+    
    TCudnn<Double_t>::ConvLayerForward(computedOutput, computedDerivatives, input, weightsTensor, biasesTensor, params,
-                                      EActivationFunction::kIdentity, forwardMatrices);
+                                      EActivationFunction::kIdentity, forwardMatrix,
+                                     (typename Architecture::ConvDescriptors_t &) *convDescriptors);
                                       
    TCudaHostBuffer<Double_t> expectedOutput_buffer(numberFilters * height * width);                                  
    for (size_t i = 0; i < numberFilters; i++) {
@@ -305,8 +309,9 @@ bool testForward1_cudnn()
          expectedOutput_buffer[i * height * width + j] = expected[i][j];
       }
    }
-
-   return computedOutput[0].isEqual(expectedOutput_buffer, expectedOutput_buffer.GetSize());
+       
+   //computedOutput.Print();
+   return computedOutput.isEqual(expectedOutput_buffer, expectedOutput_buffer.GetSize());
 }
 /*************************************************************************
 * Test 1: Backward Propagation

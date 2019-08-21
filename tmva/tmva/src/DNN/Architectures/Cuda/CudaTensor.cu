@@ -184,8 +184,7 @@ TCudaTensor<AFloat>::TCudaTensor(TCudaDeviceBuffer<AFloat> buffer,
    fStrides = ComputeStridesFromShape(fShape, layout==MemoryLayout::RowMajor);
    
    fSize = (layout==MemoryLayout::RowMajor) ? fStrides.front()*fShape.front() : 
-                                              fStrides.back()*fShape.back(); 
-   
+                                              fStrides.back()*fShape.back();  
    InitializeCuda();  
 }
 
@@ -269,7 +268,7 @@ inline void TCudaTensor<AFloat>::InitializeCuda()
       // 4D tensor is more performant on lower dimensions and supports all folowing operations
       if (fNDim == 4) {
          CUDNNCHECK(cudnnSetTensor4dDescriptor(fTensorDescriptor,
-                                               CUDNN_TENSOR_NHWC,// Layout of the tensor in memory
+                                               CUDNN_TENSOR_NCHW,// Layout of the tensor in memory
                                                fDataType,
                                                (int)fShape[0],   // batch size
                                                (int)fShape[1],   // no. channels

@@ -28,17 +28,14 @@ namespace DNN
 template<typename AFloat>
 void TCudnn<AFloat>::Activation(TCudaTensor<AFloat> & A, EActivationFunction activFunct, ActivationDescriptor_t activationDescr,  const double coef, const AFloat alpha, const AFloat beta)
 {
-   //cudnnActivationDescriptor_t activationDescriptor;
-   //CUDNNCHECK(cudnnCreateActivationDescriptor(&activationDescriptor));
-   
    cudnnActivationMode_t activationMode;
    switch(activFunct) {
-      case EActivationFunction::kIdentity: activationMode = CUDNN_ACTIVATION_IDENTITY;break;
+      case EActivationFunction::kIdentity: return; // Identity activation only works for cudnnConvolutionBiasActivationForward()
       case EActivationFunction::kRelu:     activationMode = CUDNN_ACTIVATION_RELU;    break;
       case EActivationFunction::kSigmoid:  activationMode = CUDNN_ACTIVATION_SIGMOID; break;
       case EActivationFunction::kTanh:     activationMode = CUDNN_ACTIVATION_TANH;    break;
       // The activations otherwise used are not supported by cuDNN
-      default:    activationMode = CUDNN_ACTIVATION_IDENTITY;     
+      default:    return;    
    };
    
    CUDNNCHECK(cudnnSetActivationDescriptor(activationDescr,
@@ -54,8 +51,6 @@ void TCudnn<AFloat>::Activation(TCudaTensor<AFloat> & A, EActivationFunction act
                                      &beta,
                                      A.GetTensorDescriptor(),     // Can be computed in place
                                      A.GetDataPointer()));
-
-   //CUDNNCHECK(cudnnDestroyActivationDescriptor(activationDescr));
 }
 
 //______________________________________________________________________________

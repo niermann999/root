@@ -397,7 +397,8 @@ public:
                                 const Matrix_t &weights, const Matrix_t & biases,
                                 const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
                                 Tensor_t & /* inputPrime */,
-                                const ConvDescriptors_t & descriptors);
+                                const ConvDescriptors_t & /*descriptors*/,   // Empty struct for cpu architecture
+                                const void * cudnnWorkspace = nullptr);      // Remains nullptr for cpu architecture
 
    /** @name Backward Propagation in Convolutional Layer
     */

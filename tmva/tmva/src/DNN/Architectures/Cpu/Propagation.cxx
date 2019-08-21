@@ -362,7 +362,8 @@ void TCpu<AFloat>::ConvLayerForward(TCpuTensor<AFloat> & output,
                                     const TCpuMatrix<AFloat> &weights, const TCpuMatrix<AFloat> & biases,
                                     const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
                                     TCpuTensor<AFloat> & /*  */,
-                                    const ConvDescriptors_t & /*descriptors*/)
+                                    const ConvDescriptors_t & /*descriptors*/,
+                                    const void * cudnnWorkspace)
 {
    size_t height = calculateDimension(params.inputHeight, params.filterHeight, params.paddingHeight, params.strideRows);
    size_t width = calculateDimension(params.inputWidth, params.filterWidth, params.paddingWidth, params.strideCols);

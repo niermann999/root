@@ -27,7 +27,9 @@
 #ifndef TMVA_CNN_CONVLAYER
 #define TMVA_CNN_CONVLAYER
 
-//#include "TMVA/DNN/Architectures/TCudnn.h"
+#include "cuda.h"
+//#include "cuda_runtime_api.h"
+#include "cuda_runtime.h"
 #include "TMatrix.h"
 
 #include "TMVA/DNN/GeneralLayer.h"
@@ -92,7 +94,8 @@ private:
 
    Tensor_t fForwardTensor;            ///< Cache tensor used for speeding-up the forward pass.
    
-   TDescriptors * fDescriptors = nullptr; ///< Keeps the convolution, activations and filter descriptors
+   TDescriptors * fDescriptors = nullptr;  ///< Keeps the convolution, activations and filter descriptors
+   void * fCudnnWorkspace = nullptr; ///< On device memory needed for cudnn convolution operation
 
    void InitializeDescriptors(); 
 public:
@@ -290,6 +293,8 @@ template <typename Architecture_t>
 TConvLayer<Architecture_t>::~TConvLayer()
 {
    if (fDescriptors) delete fDescriptors;
+   
+   //if (fCudnnWorkspace) cudaFree(fCudnnWorkspace);
    // Release cuDNN resources
    //CUDNNCHECK(cudnnDestroyFilterDescriptor(fFilterDescriptor));
    //CUDNNCHECK(cudnnDestroyConvolutionDescriptor(fConvolutionDescriptor));
@@ -306,7 +311,8 @@ auto TConvLayer<Architecture_t>::Forward(Tensor_t &input, bool /*applyDropout*/)
    //R__ASSERT( input.size() > 0);
    Architecture_t::ConvLayerForward(this->GetOutput(), this->GetDerivatives(), input, this->GetWeightsAt(0),
                                     this->GetBiasesAt(0), params, this->GetActivationFunction(),
-                                    this->GetForwardMatrices(), (TCNNDescriptors<TConvLayer<Architecture_t>> &) (*fDescriptors));
+                                    this->GetForwardMatrices(), (TCNNDescriptors<TConvLayer<Architecture_t>> &) (*fDescriptors),
+                                    fCudnnWorkspace);
 
 #if 0
    // in printciple I could make the indices data member of the class

@@ -207,7 +207,8 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
                                       const Matrix_t & weights, const Matrix_t & biases,
                                       const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
                                       Tensor_t & inputPrime,
-                                      const ConvDescriptors_t & descriptors)
+                                      const ConvDescriptors_t & descriptors,
+                                      const void * cudnnWorkspace)
 //                                    const AFloat alpha,
 //                                    const AFloat beta)
 {
@@ -222,7 +223,7 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
    // Set the  filter parameters
    CUDNNCHECK(cudnnSetFilter4dDescriptor(descriptors.WeightsDescriptor,
                                          cudnnDataType,
-                                         CUDNN_TENSOR_NHWC,
+                                         CUDNN_TENSOR_NCHW,
                                          params.numberFilters,
                                          params.inputDepth,
                                          params.filterHeight,
@@ -248,7 +249,7 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
                                                     (int*)&outputShape[1],
                                                     (int*)&outputShape[2],
                                                     (int*)&outputShape[3]));
-   TCudaTensor<AFloat> outputTensor (outputShape);
+   TCudaTensor<AFloat> outputTensor (outputShape, MemoryLayout::RowMajor, 0, 0);
    
    // cuDNN decides on which algorithm to use
    cudnnConvolutionFwdAlgo_t algorithm;
@@ -290,10 +291,16 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
                                       outputTensor.GetTensorDescriptor(),
                                       outputTensor.GetDataPointer()));
                                                                         
+   // Apply biases
+   AddConvBiases(outputTensor, biases);
+   
    // Apply activation
    TCudnn<AFloat>::Activation(outputTensor, activFunc, descriptors.HelperDescriptor);
-
-   cudaFree(&workspace);
+   
+   // Shallow copy
+   output = outputTensor;
+   
+   cudaFree(workspace);
 }
 
 //____________________________________________________________________________

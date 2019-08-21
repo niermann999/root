@@ -264,7 +264,9 @@ public:
    void Print() const {
       /*TCudaBuffer<AFloat> hostBuffer (fSize);
       fElementBuffer.CopyTo(hostBuffer);*/
-      AFloat * hostBuffer = new AFloat[fSize]; 
+      
+      AFloat hostBuffer[fSize]; 
+
       cudaMemcpy(hostBuffer, fElementBuffer, fSize * sizeof(AFloat),
                  cudaMemcpyDeviceToHost);
    
