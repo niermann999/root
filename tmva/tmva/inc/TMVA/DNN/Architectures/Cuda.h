@@ -569,11 +569,15 @@ public:
    // Architecture Initialization
    //____________________________________________________________________________
 
+   /** Initialize CNN data/operator descriptors. Not used at the moment.*/
    template<typename Layer_t>
-   static void InitializeCNNDescriptors(CNN::TDescriptors *& /*descriptors*/, Layer_t *L = nullptr) {}
+   static void InitializeCNNDescriptors(CNN::TDescriptors *& /*descriptors*/, Layer_t */*L = nullptr*/) {}
    
+   /** Release CNN data/operator descriptors. Not used at the moment.*/
    template<typename Layer_t>
-   static void ReleaseCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L = nullptr) {}
+   static void ReleaseCNNDescriptors(CNN::TDescriptors * & /*descriptors*/, Layer_t */*L = nullptr*/) {}
+   
+   static void FreeWorkspace(void * /*workspace*/) {}   ///< Only used for certain cudnn on-device memory
    
    //____________________________________________________________________________
    //

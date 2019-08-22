@@ -307,32 +307,39 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & output,
 }
 
 //____________________________________________________________________________
-/*template<typename AFloat>
-void TCudnn<AFloat>::ConvLayerBackward(std::vector<TCudaTensor<AFloat>> & activationGradientsBackward,
-                                      TCudaTensor<AFloat> & weightGradients,
-                                      TCudaTensor<AFloat> & biasGradients,
-                                      std::vector<TCudaTensor<AFloat>> & df,
-                                      const std::vector<TCudaTensor<AFloat>> & activationGradients,
-                                      const TCudaTensor<AFloat> & weights,
-                                      const std::vector<TCudaTensor<AFloat>> & activationBackward,
-                                      size_t batchSize,
-                                      size_t inputHeight,
-                                      size_t inputWidth,
-                                      size_t depth,
-                                      size_t height,
-                                      size_t width,
-                                      size_t filterDepth,
-                                      size_t filterHeight,
-                                      size_t filterWidth,
-                                      size_t nLocalViews)
+#if 0
+template<typename AFloat>
+void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
+                                       Matrix_t &weightGradients, Matrix_t &biasGradients,
+                                       Tensor_t &inputActivation,
+                                       const Tensor_t &activationGradients,
+                                       const Matrix_t &weights,
+                                       const Tensor_t &activationBackward, 
+                                       size_t /*batchSize*/,   size_t /*inputHeight*/, 
+                                       size_t /*inputWidth*/,  size_t /*depth*/, 
+                                       size_t /*height*/,      size_t /*width*/,
+                                       size_t /*filterDepth*/, size_t /*filterHeight*/, 
+                                       size_t /*filterWidth*/, size_t /*nLocalViews*/)
 {
-    for (size_t i = 0; i < batchSize; i++) {
-        // Compute element-wise product.
-        Hadamard(df[i], activationGradients[i]);
-    }
+   // x  : Output of previous layer without activation                      -> inputActivation
+   // dx : Activation gradient to be computed                               -> activationGradientsBackward 
+   // y  : Ouput of this layer (activation applied)                         -> activationBackward
+   // dy : Gradient of activation from the previous layer (backpropagation) -> activationGradients
+   ActivationFunctionBackward(activationGradientsBackward, inputActivation, activationBackward, activationGradients);  // dx x y dy
+
+   //Derivatives(df, activationGradients);
+   /*for (size_t i = 0; i < batchSize; i++) {
+       // Compute element-wise product.
+       Hadamard(df[i], activationGradients[i]);
+   }
+
+   // cudnnConvolutionBackwardData ( activationGradientsBackward,  weights, this->GetActivationGradients() )   // dx, w, dy   
+   // cudnnConvolutionBackwardFilter ( weightGradients, activationBackward,  this->GetActivationGradients() )  // dw, x, dy 
+
 
     // Calculate the activation gradients of the previous layer
-    CalculateConvActivationGradients(activationGradientsBackward, df, weights, batchSize, inputHeight, inputWidth, depth,
+    CalculateConvActivationGradients(activationGradientsBackward, 
+    , weights, batchSize, inputHeight, inputWidth, depth,
                                      height, width, filterDepth, filterHeight, filterWidth);
 
 
@@ -341,13 +348,13 @@ void TCudnn<AFloat>::ConvLayerBackward(std::vector<TCudaTensor<AFloat>> & activa
                                  height, width, filterDepth, filterHeight, filterWidth, nLocalViews);
 
     // Calculate the bias gradients
-    CalculateConvBiasGradients(biasGradients, df, batchSize, depth, nLocalViews);
-}*/
+    CalculateConvBiasGradients(biasGradients, df, batchSize, depth, nLocalViews);*/
+}
+# endif
 
 //____________________________________________________________________________
 /*template<typename AFloat>
-void TCudnn<AFloat>::CalculateConvActivationGradients(
-                                    std::vector<TCudaTensor<AFloat>> & activationGradientsBackward,
+void TCudnn<AFloat>::CalculateConvActivationGradients(Tensor_t & activationGradientsBackward,
                                     std::vector<TCudaTensor<AFloat>> & df,
                                     const TCudaTensor<AFloat> & weights,
                                     size_t /* batchSize *//*,

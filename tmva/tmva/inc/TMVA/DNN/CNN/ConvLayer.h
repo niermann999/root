@@ -79,10 +79,11 @@ protected:
    Scalar_t fDropoutProbability; ///< Probability that an input is active.
    
    TDescriptors * fDescriptors = nullptr;  ///< Keeps the convolution, activations and filter descriptors
-   void * fCudnnWorkspace = nullptr;       ///< On device memory needed for cudnn convolution operation
-
    void InitializeDescriptors();
    void ReleaseDescriptors();
+   
+   void * fCudnnWorkspace = nullptr;       ///< On device memory needed for cudnn convolution operation
+   void FreeWorkspace();                ///< Releases the on device workspace used by cudnn functions (cannot include cuda here)
 private:
    size_t fPaddingHeight;        ///< The number of zero layers added top and bottom of the input.
    size_t fPaddingWidth;         ///< The number of zero layers left and right of the input.
@@ -96,12 +97,6 @@ private:
    Scalar_t fWeightDecay;              ///< The weight decay.
 
    Tensor_t fForwardTensor;            ///< Cache tensor used for speeding-up the forward pass.
-   
-   /*TDescriptors * fDescriptors = nullptr;  ///< Keeps the convolution, activations and filter descriptors
-   void * fCudnnWorkspace = nullptr;       ///< On device memory needed for cudnn convolution operation
-
-   void InitializeDescriptors();
-   void ReleaseDescriptors();*/
 public:
    /*! Constructor. */
    TConvLayer(size_t BatchSize, size_t InputDepth, size_t InputHeight, size_t InputWidth, size_t Depth, EInitialization Init,
@@ -301,7 +296,7 @@ TConvLayer<Architecture_t>::~TConvLayer()
       delete fDescriptors;
    }
     
-   //if (fCudnnWorkspace) cudaFree(fCudnnWorkspace);
+   if (fCudnnWorkspace) FreeWorkspace();
 }
 
 //______________________________________________________________________________
@@ -373,8 +368,6 @@ auto TConvLayer<Architecture_t>::Backward(Tensor_t &gradients_backward,
 //                                          Tensor_t & /*inp1*/, Tensor_t &
 //                                          /*inp2*/) -> void
 {
-   //evaluateDerivative<Architecture_t>(this->GetInputActivationAt(i), fF, this->GetOutputAt(i));
-   
    Architecture_t::ConvLayerBackward(
       gradients_backward, this->GetWeightGradientsAt(0), this->GetBiasGradientsAt(0), this->GetInputActivation(),
       this->GetActivationGradients(), this->GetWeightsAt(0), activations_backward, this->GetBatchSize(),
@@ -465,12 +458,18 @@ size_t TConvLayer<Architecture_t>::calculateNLocalViews(size_t inputHeight, size
 //______________________________________________________________________________
 template <typename Architecture_t>
 void TConvLayer<Architecture_t>::InitializeDescriptors() {
-      Architecture_t::InitializeCNNDescriptors(fDescriptors, this);
+   Architecture_t::InitializeCNNDescriptors(fDescriptors, this);
 }
 
 template <typename Architecture_t>
 void TConvLayer<Architecture_t>::ReleaseDescriptors() {
-      Architecture_t::ReleaseCNNDescriptors(fDescriptors, this);
+   Architecture_t::ReleaseCNNDescriptors(fDescriptors, this);
+}
+
+//______________________________________________________________________________
+template <typename Architecture_t>
+void TConvLayer<Architecture_t>::FreeWorkspace() {
+  Architecture_t::FreeWorkspace(fCudnnWorkspace);
 }
 
 //______________________________________________________________________________

@@ -232,11 +232,11 @@ public:
       fElementBuffer.CopyTo(hostBufferThis);
       other.GetDeviceBuffer().CopyTo(hostBufferOther);*/
       
-      AFloat hostBufferThis [fSize];
-      AFloat hostBufferOther[fSize]; 
-      cudaMemcpy(hostBufferThis, fElementBuffer, fSize * sizeof(AFloat),
+      std::unique_ptr<AFloat[]> hostBufferThis(new AFloat[fSize]);
+      std::unique_ptr<AFloat[]> hostBufferOther(new AFloat[fSize]);
+      cudaMemcpy(hostBufferThis.get(), fElementBuffer, fSize * sizeof(AFloat),
                  cudaMemcpyDeviceToHost);
-      cudaMemcpy(hostBufferOther, other.GetDeviceBuffer(), fSize * sizeof(AFloat),
+      cudaMemcpy(hostBufferOther.get(), other.GetDeviceBuffer(), fSize * sizeof(AFloat),
                  cudaMemcpyDeviceToHost);
       
       for (size_t i = 0; i < fSize; i++) {
@@ -251,8 +251,8 @@ public:
       /*TCudaHostBuffer<AFloat> hostBufferThis (fSize);
       fElementBuffer.CopyTo(hostBufferThis);*/
       
-      AFloat hostBufferThis[fSize];
-      cudaMemcpy(hostBufferThis, fElementBuffer, fSize * sizeof(AFloat),
+      std::unique_ptr<AFloat[]> hostBufferThis(new AFloat[fSize]);
+      cudaMemcpy(hostBufferThis.get(), fElementBuffer, fSize * sizeof(AFloat),
                  cudaMemcpyDeviceToHost);
       
       for (size_t i = 0; i < fSize; i++) {

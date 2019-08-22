@@ -26,7 +26,7 @@ namespace DNN
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::Activation(TCudaTensor<AFloat> & A, EActivationFunction activFunct, ActivationDescriptor_t activationDescr,  const double coef, const AFloat alpha, const AFloat beta)
+void TCudnn<AFloat>::Activation(Tensor_t & X, EActivationFunction activFunct, ActivationDescriptor_t activationDescr,  const double coef, const AFloat alpha, const AFloat beta)
 {
    cudnnActivationMode_t activationMode;
    switch(activFunct) {
@@ -43,19 +43,23 @@ void TCudnn<AFloat>::Activation(TCudaTensor<AFloat> & A, EActivationFunction act
                                            CUDNN_PROPAGATE_NAN,
                                            coef));
                                            
-   CUDNNCHECK(cudnnActivationForward(A.GetCudnnHandle(),
+   CUDNNCHECK(cudnnActivationForward(X.GetCudnnHandle(),
                                      activationDescr,
                                      &alpha,
-                                     A.GetTensorDescriptor(),
-                                     A.GetDataPointer(),
+                                     X.GetTensorDescriptor(),
+                                     X.GetDataPointer(),
                                      &beta,
-                                     A.GetTensorDescriptor(),     // Can be computed in place
-                                     A.GetDataPointer()));
+                                     X.GetTensorDescriptor(),     // Can be computed in place
+                                     X.GetDataPointer()));
 }
 
-//______________________________________________________________________________
+//______________________________________________________________________________s
 template<typename AFloat>
-void TCudnn<AFloat>::Derivatives(const TCudaTensor<AFloat> & B, TCudaTensor<AFloat> & A, EActivationFunction activFunct, ActivationDescriptor_t activationDescr,  const double coef, const AFloat alpha, const AFloat beta)
+void TCudnn<AFloat>::ActivationFunctionBackward(Tensor_t & dX,      const Tensor_t & X, 
+                                                const Tensor_t & Y, const Tensor_t & dY,
+                                                EActivationFunction activFunct,
+                                                ActivationDescriptor_t activationDescr, 
+                                                const double coef, const AFloat alpha, const AFloat beta)
 {
    cudnnActivationMode_t activationMode;
    switch(activFunct) {
@@ -72,71 +76,74 @@ void TCudnn<AFloat>::Derivatives(const TCudaTensor<AFloat> & B, TCudaTensor<AFlo
                                            CUDNN_PROPAGATE_NAN,
                                            coef));
                                            
-   /*CUDNNCHECK(cudnnActivationBackward(B.GetCudnnHandle(),
+   CUDNNCHECK(cudnnActivationBackward(X.GetCudnnHandle(),
                                       activationDescr,
                                       &alpha,
-                                      A.GetTensorDescriptor(),
-                                      A.GetDataPointer(),
-    const cudnnTensorDescriptor_t    dyDesc,
-    const void                      *dy,
-    const cudnnTensorDescriptor_t    xDesc,
-    const void                      *x,
-    const void                      *beta,
-    const cudnnTensorDescriptor_t    dxDesc,
-    void                            *dx));*/
+                                      Y.GetTensorDescriptor(),
+                                      Y.GetDataPointer(),
+                                      dY.GetTensorDescriptor(),
+                                      dY.GetDataPointer(),
+                                      X.GetTensorDescriptor(),
+                                      X.GetDataPointer(),
+                                      &beta,
+                                      dX.GetTensorDescriptor(),
+                                      dX.GetDataPointer()));
 }
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::Relu(TCudaTensor<AFloat> & A, ActivationDescriptor_t activationDescr, const double coef, const AFloat alpha, const AFloat beta)
+void TCudnn<AFloat>::Relu(Tensor_t & X, ActivationDescriptor_t activationDescr, const double coef, const AFloat alpha, const AFloat beta)
 {
-   Activation(A, EActivationFunction::kRelu, activationDescr, coef, alpha, beta);
+   Activation(X, EActivationFunction::kRelu, activationDescr, coef, alpha, beta);
 }
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::ReluDerivative(TCudaTensor<AFloat> & B, const TCudaTensor<AFloat> & A, 
+void TCudnn<AFloat>::ReluDerivative(Tensor_t & dX, Tensor_t & X, 
+                                    Tensor_t & Y,  Tensor_t & dY, 
                                     ActivationDescriptor_t activationDescr, const double coef, 
                                     const AFloat alpha, const AFloat beta)
 {
-   Derivatives(A, B, EActivationFunction::kRelu, activationDescr, coef, alpha, beta);
+   ActivationFunctionBackward(dX, X, Y, dY, EActivationFunction::kRelu, activationDescr, coef, alpha, beta);
 }
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::Sigmoid(TCudaTensor<AFloat> & A, ActivationDescriptor_t activationDescr, const double coef, const AFloat alpha, const AFloat beta)
+void TCudnn<AFloat>::Sigmoid(Tensor_t & X, ActivationDescriptor_t activationDescr, const double coef, const AFloat alpha, const AFloat beta)
 {
-   Activation(A, EActivationFunction::kSigmoid, activationDescr, coef, alpha, beta);
+   Activation(X, EActivationFunction::kSigmoid, activationDescr, coef, alpha, beta);
 }
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::SigmoidDerivative(TCudaTensor<AFloat> & B, const TCudaTensor<AFloat> & A, 
+void TCudnn<AFloat>::SigmoidDerivative(Tensor_t & dX, Tensor_t & X, 
+                                       Tensor_t & Y,  Tensor_t & dY,
                                        ActivationDescriptor_t activationDescr, const double coef, 
                                        const AFloat alpha, const AFloat beta)
 {
-   Derivatives(A, B, EActivationFunction::kSigmoid, activationDescr, coef, alpha, beta);
+   ActivationFunctionBackward(dX, X, Y, dY, EActivationFunction::kSigmoid, activationDescr, coef, alpha, beta);
 }
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::Tanh(TCudaTensor<AFloat> & A, ActivationDescriptor_t activationDescr, const double coef, const AFloat alpha, const AFloat beta)
+void TCudnn<AFloat>::Tanh(Tensor_t & X, ActivationDescriptor_t activationDescr, const double coef, const AFloat alpha, const AFloat beta)
 {
-   Activation(A, EActivationFunction::kTanh, activationDescr, coef, alpha, beta);
+   Activation(X, EActivationFunction::kTanh, activationDescr, coef, alpha, beta);
 }
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::TanhDerivative(TCudaTensor<AFloat> & B, const TCudaTensor<AFloat> & A, 
+void TCudnn<AFloat>::TanhDerivative(Tensor_t & dX, Tensor_t & X, 
+                                    Tensor_t & Y,  Tensor_t & dY, 
                                     ActivationDescriptor_t activationDescr, const double coef, 
                                     const AFloat alpha, const AFloat beta)
 {
-   Derivatives(A, B, EActivationFunction::kTanh, activationDescr, coef, alpha, beta);
+   ActivationFunctionBackward(dX, X, Y, dY, EActivationFunction::kTanh, activationDescr, coef, alpha, beta);
 }
 
 //______________________________________________________________________________
 /*template<typename AFloat>
-void TCudnn<AFloat>::SymmetricRelu(TCudaTensor<AFloat> & A)
+void TCudnn<AFloat>::SymmetricRelu(Tensor_t & A)
 {
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(A);
@@ -149,8 +156,8 @@ void TCudnn<AFloat>::SymmetricRelu(TCudaTensor<AFloat> & A)
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::SymmetricReluDerivative(TCudaTensor<AFloat> & B,
-                                                const TCudaTensor<AFloat> & A)
+void TCudnn<AFloat>::SymmetricReluDerivative(Tensor_t & B,
+                                                const Tensor_t & A)
 {
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(B);
@@ -165,7 +172,7 @@ void TCudnn<AFloat>::SymmetricReluDerivative(TCudaTensor<AFloat> & B,
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::SoftSign(TCudaTensor<AFloat> & A)
+void TCudnn<AFloat>::SoftSign(Tensor_t & A)
 {
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(A);
@@ -178,8 +185,8 @@ void TCudnn<AFloat>::SoftSign(TCudaTensor<AFloat> & A)
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::SoftSignDerivative(TCudaTensor<AFloat> & B,
-                                           const TCudaTensor<AFloat> & A)
+void TCudnn<AFloat>::SoftSignDerivative(Tensor_t & B,
+                                           const Tensor_t & A)
 {
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(B);
@@ -194,7 +201,7 @@ void TCudnn<AFloat>::SoftSignDerivative(TCudaTensor<AFloat> & B,
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::Gauss(TCudaTensor<AFloat> & A)
+void TCudnn<AFloat>::Gauss(Tensor_t & A)
 {
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(A);
@@ -207,8 +214,8 @@ void TCudnn<AFloat>::Gauss(TCudaTensor<AFloat> & A)
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::GaussDerivative(TCudaTensor<AFloat> & B,
-                                    const TCudaTensor<AFloat> & A)
+void TCudnn<AFloat>::GaussDerivative(Tensor_t & B,
+                                    const Tensor_t & A)
 {
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(B);

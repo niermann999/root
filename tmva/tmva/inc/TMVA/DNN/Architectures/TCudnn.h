@@ -37,7 +37,7 @@ namespace TMVA
 namespace DNN
 {
 
- struct TCudnnEmptyDescriptor {};
+struct TCudnnEmptyDescriptor {};
  
 /** The TCudnn architecture class.
  *
@@ -96,6 +96,7 @@ public:
    static void ReleaseDescriptor(FilterDescriptor_t &      filterDescr);
    static void ReleaseDescriptor(PoolingDescriptor_t &     poolingDescr);
    
+   static void FreeWorkspace(void * workspace);
    //____________________________________________________________________________
    //
    // Propagation
@@ -135,13 +136,11 @@ public:
                         const Tensor_t & activationBackward);*/
 
    /** Above functions extended to vectors */
-   static void ScaleAdd(Tensor_t & A,
-                        const Tensor_t & B,
+   static void ScaleAdd(Tensor_t & A, const Tensor_t & B,
                         Scalar_t alpha = 1.0,
                         Scalar_t beta = 1.0);
 
-   static void Copy(Tensor_t & A,
-                    const Tensor_t & B);
+   static void Copy(Tensor_t & A, const Tensor_t & B);
 
    // copy from another tensor
    /*template<typename ATensor_t>
@@ -160,42 +159,52 @@ public:
     * and writes the results into the result matrix.
     */
    ///@{
-   static void Identity(Tensor_t & B) {}
-   static void IdentityDerivative(Tensor_t & B,
-                                  const Tensor_t & A) {}
+   static void Identity(Tensor_t & X) {}
+   static void IdentityDerivative(Tensor_t & dX, Tensor_t& X, 
+                                  Tensor_t & Y,  Tensor_t & dY, 
+                                  ActivationDescriptor_t activationDescr, 
+                                  const double coef = 0.0, 
+                                  const AFloat alpha = 1, 
+                                  const AFloat beta = 1) {}
 
-   static void Activation(Tensor_t & B, EActivationFunction activFunct,
+   static void Activation(Tensor_t & X, EActivationFunction activFunct,
                           ActivationDescriptor_t activationDescr,
                           const double coef = 0.0, const AFloat alpha = 1, 
                           const AFloat beta = 1);
                           
-   static void Derivatives(const Tensor_t & B, Tensor_t & A, EActivationFunction activFunct,
-                           ActivationDescriptor_t activationDescr,
-                           const double coef = 0.0, const AFloat alpha = 1, 
-                           const AFloat beta = 1);
+   /** Computes the gradient of the activation function */
+   static void ActivationFunctionBackward(Tensor_t & dX,      const Tensor_t & X, 
+                                          const Tensor_t & Y, const Tensor_t & dY,
+                                          EActivationFunction activFunct,
+                                          ActivationDescriptor_t activationDescr,
+                                          const double coef = 0.0, const AFloat alpha = 1, 
+                                          const AFloat beta = 1);
                     
-   static void Relu(Tensor_t & B, ActivationDescriptor_t activationDescr, 
+   static void Relu(Tensor_t & X, ActivationDescriptor_t activationDescr, 
                     const double coef = 0.0, const AFloat alpha = 1, 
                     const AFloat beta = 1);          
-   static void ReluDerivative(Tensor_t & B, const Tensor_t & A, 
+   static void ReluDerivative(Tensor_t & dX, Tensor_t& X, 
+                              Tensor_t & Y,  Tensor_t & dY, 
                               ActivationDescriptor_t activationDescr, 
                               const double coef = 0.0, 
                               const AFloat alpha = 1, 
                               const AFloat beta = 1);
 
-   static void Sigmoid(Tensor_t & B, ActivationDescriptor_t activationDescr,
+   static void Sigmoid(Tensor_t & X, ActivationDescriptor_t activationDescr,
                        const double coef = 0.0, const AFloat alpha = 1,
                        const AFloat beta = 1);
-   static void SigmoidDerivative(Tensor_t & B, const Tensor_t & A, 
+   static void SigmoidDerivative(Tensor_t & dX, Tensor_t& X, 
+                                 Tensor_t & Y,  Tensor_t & dY, 
                                  ActivationDescriptor_t activationDescr, 
                                  const double coef = 0.0, 
                                  const AFloat alpha = 1, 
                                  const AFloat beta = 1);
 
-   static void Tanh(Tensor_t & B, ActivationDescriptor_t activationDescr, 
+   static void Tanh(Tensor_t & X, ActivationDescriptor_t activationDescr, 
                     const double coef = 0.0, const AFloat alpha = 1,
                     const AFloat beta = 1);
-   static void TanhDerivative(Tensor_t & B, const Tensor_t & A, 
+   static void TanhDerivative(Tensor_t & dX, Tensor_t& X, 
+                              Tensor_t & Y,  Tensor_t & dY,
                               ActivationDescriptor_t activationDescr, 
                               const double coef = 0.0, 
                               const AFloat alpha = 1, 
@@ -350,7 +359,7 @@ public:
 
    /** Transform the matrix B in local view format, suitable for
     *  convolution, and store it in matrix A */
-   static void Im2col(Matrix_t &A,
+   /*static void Im2col(Matrix_t &A,
                       const Matrix_t &B,
                       size_t imgHeight,
                       size_t imgWidth,
@@ -365,12 +374,12 @@ public:
                              size_t imgHeight, size_t imgWidth, size_t fltHeight,
                              size_t fltWidth, size_t strideRows, size_t strideCols, size_t zeroPaddingHeight,
                              size_t zeroPaddingWidth) {}
-   static void Im2colFast(Matrix_t &A, const Matrix_t &B, const std::vector<int> & V) {}
+   static void Im2colFast(Matrix_t &A, const Matrix_t &B, const std::vector<int> & V) {}*/
 
    /** Rotates the matrix \p B, which is representing a weights,
     *  and stores them in the matrix \p A. */
-   static void RotateWeights(Matrix_t &A, const Matrix_t &B, size_t filterDepth, size_t filterHeight,
-                             size_t filterWidth, size_t numFilters) {}
+   /*static void RotateWeights(Matrix_t &A, const Matrix_t &B, size_t filterDepth, size_t filterHeight,
+                             size_t filterWidth, size_t numFilters) {}*/
 
    /** Add the biases in the Convolutional Layer.  */
    static void AddConvBiases(Matrix_t &output, const Matrix_t &biases);
@@ -395,6 +404,7 @@ public:
     */
       ///@{
 
+#if 0
    /** Perform the complete backward propagation step in a Convolutional Layer.
     *  If the provided \p activationGradientsBackward matrix is not empty, compute the
     *  gradients of the objective function with respect to the activations
@@ -405,35 +415,39 @@ public:
     *  formed. */
    static void ConvLayerBackward(Tensor_t &activationGradientsBackward,
                                  Matrix_t &weightGradients, Matrix_t &biasGradients,
-                                 Tensor_t &df,
+                                 Tensor_t &inputActivation,
                                  const Tensor_t &activationGradients,
                                  const Matrix_t &weights,
-                                 const Tensor_t &activationBackward, size_t batchSize,
-                                 size_t inputHeight, size_t inputWidth, size_t depth, size_t height, size_t width,
-                                 size_t filterDepth, size_t filterHeight, size_t filterWidth, size_t nLocalViews) {}
+                                 const Tensor_t &activationBackward,
+                                 size_t /*batchSize*/,   size_t /*inputHeight*/, 
+                                 size_t /*inputWidth*/,  size_t /*depth*/, 
+                                 size_t /*height*/,      size_t /*width*/, 
+                                 size_t /*filterDepth*/, size_t /*filterHeight*/, 
+                                 size_t /*filterWidth*/, size_t /*nLocalViews*/);
+#endif
 
    /** Utility function for calculating the activation gradients of the layer
     *  before the convolutional layer. */
-   static void CalculateConvActivationGradients(Tensor_t &activationGradientsBackward,
+   /*static void CalculateConvActivationGradients(Tensor_t &activationGradientsBackward,
                                                 const Tensor_t &df,
                                                 const Matrix_t &weights, size_t batchSize,
                                                 size_t inputHeight, size_t inputWidth, size_t depth, size_t height,
                                                 size_t width, size_t filterDepth, size_t filterHeight,
-                                                size_t filterWidth) {}
+                                                size_t filterWidth) {}*/
                                                 
    /** Utility function for calculating the weight gradients of the convolutional
     * layer. */
-   static void CalculateConvWeightGradients(Matrix_t &weightGradients,
+   /*static void CalculateConvWeightGradients(Matrix_t &weightGradients,
                                             const Tensor_t &df,
                                             const Tensor_t &activations_backward,
                                             size_t batchSize, size_t inputHeight, size_t inputWidth, size_t depth,
                                             size_t height, size_t width, size_t filterDepth, size_t filterHeight,
-                                            size_t filterWidth, size_t nLocalViews) {}
+                                            size_t filterWidth, size_t nLocalViews) {}*/
 
    /** Utility function for calculating the bias gradients of the convolutional
     *  layer */
-   static void CalculateConvBiasGradients(Matrix_t &biasGradients, const Tensor_t &df,
-                                          size_t batchSize, size_t depth, size_t nLocalViews) {}
+   /*static void CalculateConvBiasGradients(Matrix_t &biasGradients, const Tensor_t &df,
+                                          size_t batchSize, size_t depth, size_t nLocalViews) {}*/
       ///@}
    
    ///@}
@@ -675,6 +689,12 @@ void TCudnn<AFloat>::ReleaseDescriptor(FilterDescriptor_t & filterDescr) {
 template <typename AFloat>
 void TCudnn<AFloat>::ReleaseDescriptor(PoolingDescriptor_t & poolingDescr) {
    CUDNNCHECK(cudnnDestroyPoolingDescriptor(poolingDescr));
+}
+
+//____________________________________________________________________________
+template <typename AFloat>
+void TCudnn<AFloat>::FreeWorkspace(void * workspace) {
+   if (workspace) cudaFree(workspace);
 }
 
 //____________________________________________________________________________
