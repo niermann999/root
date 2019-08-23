@@ -56,6 +56,7 @@ template<typename AFloat>
 void TCuda<AFloat>::ReluDerivative(TCudaTensor<AFloat> & B,
                                        const TCudaTensor<AFloat> & A)
 {
+    assert(B.GetNrows() == A.GetNrows() && B.GetNcols() == A.GetNcols());
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(B);
    cudaStream_t s = A.GetComputeStream();
@@ -85,6 +86,7 @@ template<typename AFloat>
 void TCuda<AFloat>::SigmoidDerivative(TCudaTensor<AFloat> & B,
                                           const TCudaTensor<AFloat> & A)
 {
+    assert(B.GetNrows() == A.GetNrows() && B.GetNcols() == A.GetNcols());
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(B);
    cudaStream_t s = A.GetComputeStream();
@@ -114,6 +116,7 @@ template<typename AFloat>
 void TCuda<AFloat>::TanhDerivative(TCudaTensor<AFloat> & B,
                                        const TCudaTensor<AFloat> & A)
 {
+    assert(B.GetNrows() == A.GetNrows() && B.GetNcols() == A.GetNcols());
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(B);
    cudaStream_t s = A.GetComputeStream();
@@ -143,6 +146,7 @@ template<typename AFloat>
 void TCuda<AFloat>::SymmetricReluDerivative(TCudaTensor<AFloat> & B,
                                                 const TCudaTensor<AFloat> & A)
 {
+    assert(B.GetNrows() == A.GetNrows() && B.GetNcols() == A.GetNcols());
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(B);
    cudaStream_t s = A.GetComputeStream();
@@ -172,6 +176,7 @@ template<typename AFloat>
 void TCuda<AFloat>::SoftSignDerivative(TCudaTensor<AFloat> & B,
                                            const TCudaTensor<AFloat> & A)
 {
+    assert(B.GetNrows() == A.GetNrows() && B.GetNcols() == A.GetNcols());
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(B);
    cudaStream_t s = A.GetComputeStream();
@@ -201,6 +206,7 @@ template<typename AFloat>
 void TCuda<AFloat>::GaussDerivative(TCudaTensor<AFloat> & B,
                                     const TCudaTensor<AFloat> & A)
 {
+    assert(B.GetNrows() == A.GetNrows() && B.GetNcols() == A.GetNcols());
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(B);
    cudaStream_t s = A.GetComputeStream();

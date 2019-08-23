@@ -137,8 +137,8 @@ TDenseLayer<Architecture_t>::TDenseLayer(size_t batchSize, size_t inputWidth, si
                                    batchSize, width, init),
       fDerivatives(), fDropoutProbability(dropoutProbability), fF(f), fReg(reg), fWeightDecay(weightDecay)
 {
-   std::vector<size_t> shape = {batchSize, width};
-   fDerivatives = Tensor_t ( shape );
+   // should be  {1, batchSize, width} but take from output
+   fDerivatives = Tensor_t ( this->GetOutput().GetShape() );
 }
 
 //______________________________________________________________________________
@@ -214,7 +214,7 @@ void TDenseLayer<Architecture_t>::Print() const
    std::cout << " ( Input =" << std::setw(6) << this->GetWeightsAt(0).GetNcols();  // input size 
    std::cout << " , Width =" << std::setw(6) << this->GetWeightsAt(0).GetNrows() << " ) ";  // layer width
   
-   std::cout << "\tOutput = ( " << std::setw(2) << this->GetOutput().GetSize() << " ," << std::setw(6) << this->GetOutput().GetShape()[0] << " ," << std::setw(6) << this->GetOutput().GetShape()[1] << " ) ";
+   std::cout << "\tOutput = ( " << std::setw(2) << this->GetOutput().GetFirstSize() << " ," << std::setw(6) << this->GetOutput().GetShape()[0] << " ," << std::setw(6) << this->GetOutput().GetShape()[1] << " ) ";
    
    std::vector<std::string> activationNames = { "Identity","Relu","Sigmoid","Tanh","SymmRelu","SoftSign","Gauss" };
    std::cout << "\t Activation Function = ";

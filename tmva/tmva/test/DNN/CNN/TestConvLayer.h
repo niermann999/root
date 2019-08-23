@@ -169,6 +169,7 @@ bool testForward1()
    return status;
 }
 
+
 template<typename Architecture>
 bool testForward1_cudnn()
 {
@@ -292,6 +293,7 @@ bool testForward1_cudnn()
 
    return computedOutput.isEqual(expectedOutput_buffer, expectedOutput_buffer.GetSize());
 }
+
 /*************************************************************************
 * Test 1: Backward Propagation
 *  batch size = 1

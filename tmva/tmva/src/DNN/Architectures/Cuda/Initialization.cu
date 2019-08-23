@@ -130,6 +130,8 @@ void TCuda<AFloat>::InitializeGlorotUniform(TCudaMatrix<AFloat> & A)
          B(i,j) = rand.Uniform(-range, range);
       }
    }
+   printf("initialize glorotuniform \n");
+   B.Print(); 
    A = B; 
 }
 
