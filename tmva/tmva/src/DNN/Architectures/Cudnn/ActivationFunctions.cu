@@ -29,6 +29,8 @@ template<typename AFloat>
 void TCudnn<AFloat>::Activation(Tensor_t & X, EActivationFunction activFunct, ActivationDescriptor_t activationDescr,  const double coef, const AFloat alpha, const AFloat beta)
 {
    cudnnActivationMode_t activationMode;
+   //std::cout << activationDescr << std::endl;
+   //activationDescr = (ActivationDescriptor_t) nullptr;
    switch(activFunct) {
       case EActivationFunction::kIdentity: return; // Identity activation only works for cudnnConvolutionBiasActivationForward()
       case EActivationFunction::kRelu:     activationMode = CUDNN_ACTIVATION_RELU;    break;
@@ -53,29 +55,17 @@ void TCudnn<AFloat>::Activation(Tensor_t & X, EActivationFunction activFunct, Ac
                                      X.GetDataPointer()));
 }
 
-//______________________________________________________________________________s
+//______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::ActivationFunctionBackward(Tensor_t & dX,      const Tensor_t & X, 
-                                                const Tensor_t & Y, const Tensor_t & dY,
-                                                EActivationFunction activFunct,
-                                                ActivationDescriptor_t activationDescr, 
-                                                const double coef, const AFloat alpha, const AFloat beta)
+void TCudnn<AFloat>::ActivationFunctionBackward(const Tensor_t & Y, const Tensor_t & dY, 
+                                                const Tensor_t & X, Tensor_t & dX,
+                                                const ActivationDescriptor_t activationDescr, 
+                                                const AFloat alpha, const AFloat beta)
 {
-   cudnnActivationMode_t activationMode;
-   switch(activFunct) {
-      case EActivationFunction::kIdentity: return; // Identity activation only works for cudnnConvolutionBiasActivationForward()
-      case EActivationFunction::kRelu:     activationMode = CUDNN_ACTIVATION_RELU;    break;
-      case EActivationFunction::kSigmoid:  activationMode = CUDNN_ACTIVATION_SIGMOID; break;
-      case EActivationFunction::kTanh:     activationMode = CUDNN_ACTIVATION_TANH;    break;
-      // The activations otherwise used are not supported by cuDNN
-      default:    return;    
-   };
-   
-   CUDNNCHECK(cudnnSetActivationDescriptor(activationDescr,
-                                           activationMode,
-                                           CUDNN_PROPAGATE_NAN,
-                                           coef));
-                                           
+   //if (!activationDescr) return;
+   //std::cout << "No identityy\n";
+   //Y.Print();
+   // The activation descriptor is set in the forward pass                                        
    CUDNNCHECK(cudnnActivationBackward(X.GetCudnnHandle(),
                                       activationDescr,
                                       &alpha,
@@ -99,12 +89,12 @@ void TCudnn<AFloat>::Relu(Tensor_t & X, ActivationDescriptor_t activationDescr, 
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::ReluDerivative(Tensor_t & dX, Tensor_t & X, 
-                                    Tensor_t & Y,  Tensor_t & dY, 
-                                    ActivationDescriptor_t activationDescr, const double coef, 
+void TCudnn<AFloat>::ReluDerivative(const Tensor_t & Y, const Tensor_t & dY, 
+                                    const Tensor_t & X, Tensor_t & dX, 
+                                    const ActivationDescriptor_t activationDescr, 
                                     const AFloat alpha, const AFloat beta)
 {
-   ActivationFunctionBackward(dX, X, Y, dY, EActivationFunction::kRelu, activationDescr, coef, alpha, beta);
+   ActivationFunctionBackward(Y, dY, X, dX, activationDescr, alpha, beta);
 }
 
 //______________________________________________________________________________
@@ -116,29 +106,29 @@ void TCudnn<AFloat>::Sigmoid(Tensor_t & X, ActivationDescriptor_t activationDesc
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::SigmoidDerivative(Tensor_t & dX, Tensor_t & X, 
-                                       Tensor_t & Y,  Tensor_t & dY,
-                                       ActivationDescriptor_t activationDescr, const double coef, 
+void TCudnn<AFloat>::SigmoidDerivative(const Tensor_t & Y, const Tensor_t & dY, 
+                                       const Tensor_t & X, Tensor_t & dX,
+                                       const ActivationDescriptor_t activationDescr,
                                        const AFloat alpha, const AFloat beta)
 {
-   ActivationFunctionBackward(dX, X, Y, dY, EActivationFunction::kSigmoid, activationDescr, coef, alpha, beta);
+   ActivationFunctionBackward(Y, dY, X, dX, activationDescr, alpha, beta);
 }
 
 //______________________________________________________________________________
 template<typename AFloat>
 void TCudnn<AFloat>::Tanh(Tensor_t & X, ActivationDescriptor_t activationDescr, const double coef, const AFloat alpha, const AFloat beta)
 {
-   Activation(X, EActivationFunction::kTanh, activationDescr, coef, alpha, beta);
+   Activation(X, EActivationFunction::kTanh, activationDescr, alpha, beta);
 }
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::TanhDerivative(Tensor_t & dX, Tensor_t & X, 
-                                    Tensor_t & Y,  Tensor_t & dY, 
-                                    ActivationDescriptor_t activationDescr, const double coef, 
+void TCudnn<AFloat>::TanhDerivative(const Tensor_t & Y, const Tensor_t & dY, 
+                                    const Tensor_t & X, Tensor_t & dX, 
+                                    const ActivationDescriptor_t activationDescr, 
                                     const AFloat alpha, const AFloat beta)
 {
-   ActivationFunctionBackward(dX, X, Y, dY, EActivationFunction::kTanh, activationDescr, coef, alpha, beta);
+   ActivationFunctionBackward(Y, dY, X, dX, activationDescr, alpha, beta);
 }
 
 //______________________________________________________________________________

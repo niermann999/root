@@ -219,7 +219,7 @@ public:
     *  on all streams. Only used for testing. */
    //TCudaDeviceReference<AFloat> operator()(size_t i, size_t j) const;
 
-   // FIXME: Change to on device division and reduction + unique_ptr
+   // FIXME: Change to on device division and reduction
    bool isEqual (TCudaTensor<AFloat> & other) {
    
       if (fSize != other.GetSize()) return false;
@@ -255,6 +255,7 @@ public:
       for (size_t i = 0; i < fSize; i++) {
          if (hostBufferThis[i] != hostBufferOther[i]) return false;
       }
+      
       return true; 
    }
 
@@ -366,6 +367,22 @@ public:
 
       return TCudaDeviceReference<AFloat>(elementPointer);
    }
+
+    TCudaDeviceReference<AFloat> operator()(size_t i, size_t j, size_t k, size_t l) const
+   {
+      // for rowsise 
+      //assert(GetLayout() == MemoryLayout::RowMajor);
+      assert( fNDim == 4); // || ( k==0 && fNDim == 2 ) );
+
+      size_t offset = (GetLayout() == MemoryLayout::RowMajor) ? 
+            i * fStrides[0] + j * fStrides[1] + k * fStrides[2] + l: 
+            l * fStrides[3] + k * fStrides[2] + j * fStrides[1] + i; 
+
+      AFloat * elementPointer = fElementBuffer + offset;
+
+      return TCudaDeviceReference<AFloat>(elementPointer);
+   }
+  
   
 
 

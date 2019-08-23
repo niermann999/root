@@ -81,14 +81,16 @@ protected:
    TDescriptors * fDescriptors = nullptr;  ///< Keeps the convolution, activations and filter descriptors
    void InitializeDescriptors();
    void ReleaseDescriptors();
-   
-   void * fCudnnWorkspace = nullptr;       ///< On device memory needed for cudnn convolution operation
-   void FreeWorkspace();                ///< Releases the on device workspace used by cudnn functions (cannot include cuda here)
+  
+   void * fCudnnConvFwdWorkspace;  
+   void * fCudnnConvBwdWorkspace; 
+   void * fCudnnFilterBwdWorkspace;  ///< On device memory needed for cudnn convolution operation backward
+   void FreeWorkspace(void * workSpaces);///< Releases the on device workspace used by cudnn functions (cannot include cuda here)
 private:
    size_t fPaddingHeight;        ///< The number of zero layers added top and bottom of the input.
    size_t fPaddingWidth;         ///< The number of zero layers left and right of the input.
 
-   Tensor_t fInputActivation;        ///< First fInputActivation of the activations of this layer.
+   Tensor_t fInputActivation;        ///< First output of this layer after conv, before activation.
 
    std::vector<int> fBackwardIndices;  ///< Vector of indices used for a fast Im2Col in backward pass
 
@@ -296,7 +298,9 @@ TConvLayer<Architecture_t>::~TConvLayer()
       delete fDescriptors;
    }
     
-   if (fCudnnWorkspace) FreeWorkspace();
+   if (fCudnnConvFwdWorkspace)   FreeWorkspace(fCudnnConvFwdWorkspace);
+   if (fCudnnConvBwdWorkspace)   FreeWorkspace(fCudnnConvBwdWorkspace);
+   if (fCudnnFilterBwdWorkspace) FreeWorkspace(fCudnnFilterBwdWorkspace);
 }
 
 //______________________________________________________________________________
@@ -311,7 +315,7 @@ auto TConvLayer<Architecture_t>::Forward(Tensor_t &input, bool /*applyDropout*/)
    Architecture_t::ConvLayerForward(this->GetOutput(), this->GetInputActivation(), input, this->GetWeightsAt(0),
                                     this->GetBiasesAt(0), params, this->GetActivationFunction(),
                                     this->GetForwardMatrices(), (TCNNDescriptors<TConvLayer<Architecture_t>> &) (*fDescriptors),
-                                    fCudnnWorkspace);
+                                    fCudnnConvFwdWorkspace);
 
 #if 0
    // in printciple I could make the indices data member of the class
@@ -370,9 +374,11 @@ auto TConvLayer<Architecture_t>::Backward(Tensor_t &gradients_backward,
 {
    Architecture_t::ConvLayerBackward(
       gradients_backward, this->GetWeightGradientsAt(0), this->GetBiasGradientsAt(0), this->GetInputActivation(),
-      this->GetActivationGradients(), this->GetWeightsAt(0), activations_backward, this->GetBatchSize(),
+      this->GetActivationGradients(), this->GetWeightsAt(0), activations_backward, this->GetOutput(),
+      (TCNNDescriptors<TConvLayer<Architecture_t>> &) (*fDescriptors), this->GetBatchSize(),
       this->GetInputHeight(), this->GetInputWidth(), this->GetDepth(), this->GetHeight(), this->GetWidth(),
-      this->GetFilterDepth(), this->GetFilterHeight(), this->GetFilterWidth(), this->GetNLocalViews());
+      this->GetFilterDepth(), this->GetFilterHeight(), this->GetFilterWidth(), this->GetNLocalViews(), 
+      fCudnnConvBwdWorkspace, fCudnnFilterBwdWorkspace);
 
    addRegularizationGradients<Architecture_t>(this->GetWeightGradientsAt(0), this->GetWeightsAt(0),
                                               this->GetWeightDecay(), this->GetRegularization());
@@ -468,8 +474,8 @@ void TConvLayer<Architecture_t>::ReleaseDescriptors() {
 
 //______________________________________________________________________________
 template <typename Architecture_t>
-void TConvLayer<Architecture_t>::FreeWorkspace() {
-  Architecture_t::FreeWorkspace(fCudnnWorkspace);
+void TConvLayer<Architecture_t>::FreeWorkspace(void * workSpaces) {
+   Architecture_t::FreeWorkspace(workSpaces);
 }
 
 //______________________________________________________________________________

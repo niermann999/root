@@ -140,6 +140,7 @@ public:
                         Scalar_t alpha = 1.0,
                         Scalar_t beta = 1.0);
 
+   /** Deep copy from B to A. */
    static void Copy(Tensor_t & A, const Tensor_t & B);
 
    // copy from another tensor
@@ -163,50 +164,45 @@ public:
    static void IdentityDerivative(Tensor_t & dX, Tensor_t& X, 
                                   Tensor_t & Y,  Tensor_t & dY, 
                                   ActivationDescriptor_t activationDescr, 
-                                  const double coef = 0.0, 
                                   const AFloat alpha = 1, 
                                   const AFloat beta = 1) {}
 
    static void Activation(Tensor_t & X, EActivationFunction activFunct,
-                          ActivationDescriptor_t activationDescr,
+                          const ActivationDescriptor_t activationDescr,
                           const double coef = 0.0, const AFloat alpha = 1, 
-                          const AFloat beta = 1);
+                          const AFloat beta = 0);
                           
    /** Computes the gradient of the activation function */
-   static void ActivationFunctionBackward(Tensor_t & dX,      const Tensor_t & X, 
-                                          const Tensor_t & Y, const Tensor_t & dY,
-                                          EActivationFunction activFunct,
-                                          ActivationDescriptor_t activationDescr,
-                                          const double coef = 0.0, const AFloat alpha = 1, 
-                                          const AFloat beta = 1);
+   static void ActivationFunctionBackward(const Tensor_t & Y, const Tensor_t & dY, 
+                                          const Tensor_t & X, Tensor_t & dX,
+                                          const ActivationDescriptor_t activationDescr,
+                                          const AFloat alpha = 1, 
+                                          const AFloat beta = 0);
                     
    static void Relu(Tensor_t & X, ActivationDescriptor_t activationDescr, 
                     const double coef = 0.0, const AFloat alpha = 1, 
                     const AFloat beta = 1);          
-   static void ReluDerivative(Tensor_t & dX, Tensor_t& X, 
-                              Tensor_t & Y,  Tensor_t & dY, 
-                              ActivationDescriptor_t activationDescr, 
-                              const double coef = 0.0, 
+   static void ReluDerivative(const Tensor_t & Y, const Tensor_t & dY, 
+                              const Tensor_t & X, Tensor_t & dX,
+                              const ActivationDescriptor_t activationDescr, 
                               const AFloat alpha = 1, 
                               const AFloat beta = 1);
 
    static void Sigmoid(Tensor_t & X, ActivationDescriptor_t activationDescr,
                        const double coef = 0.0, const AFloat alpha = 1,
                        const AFloat beta = 1);
-   static void SigmoidDerivative(Tensor_t & dX, Tensor_t& X, 
-                                 Tensor_t & Y,  Tensor_t & dY, 
-                                 ActivationDescriptor_t activationDescr, 
-                                 const double coef = 0.0, 
+   static void SigmoidDerivative(const Tensor_t & Y, const Tensor_t & dY, 
+                                 const Tensor_t & X, Tensor_t & dX,
+                                 const ActivationDescriptor_t activationDescr,  
                                  const AFloat alpha = 1, 
                                  const AFloat beta = 1);
 
    static void Tanh(Tensor_t & X, ActivationDescriptor_t activationDescr, 
                     const double coef = 0.0, const AFloat alpha = 1,
                     const AFloat beta = 1);
-   static void TanhDerivative(Tensor_t & dX, Tensor_t& X, 
-                              Tensor_t & Y,  Tensor_t & dY,
-                              ActivationDescriptor_t activationDescr, 
-                              const double coef = 0.0, 
+   static void TanhDerivative(const Tensor_t & Y, const Tensor_t & dY, 
+                              const Tensor_t & X, Tensor_t & dX,
+                              const ActivationDescriptor_t activationDescr, 
                               const AFloat alpha = 1, 
                               const AFloat beta = 1);
 
@@ -355,7 +351,7 @@ public:
       ///@{
 
    /** Calculate how many neurons "fit" in the output layer, given the input as well as the layer's hyperparameters. */
-   static size_t calculateDimension(size_t imgDim, size_t fltDim, size_t padding, size_t stride) {}
+   //static size_t calculateDimension(size_t imgDim, size_t fltDim, size_t padding, size_t stride) {}
 
    /** Transform the matrix B in local view format, suitable for
     *  convolution, and store it in matrix A */
@@ -396,7 +392,7 @@ public:
                                 const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
                                 Tensor_t & /* inputPrime */,
                                 const ConvDescriptors_t & descriptors,
-                                const void * cudnnWorkspace = nullptr);
+                                void * cudnnWorkspace = nullptr);
                                 //const AFloat alpha = 1,
                                 //const AFloat beta  = 1);
 
@@ -404,7 +400,7 @@ public:
     */
       ///@{
 
-#if 0
+
    /** Perform the complete backward propagation step in a Convolutional Layer.
     *  If the provided \p activationGradientsBackward matrix is not empty, compute the
     *  gradients of the objective function with respect to the activations
@@ -416,15 +412,18 @@ public:
    static void ConvLayerBackward(Tensor_t &activationGradientsBackward,
                                  Matrix_t &weightGradients, Matrix_t &biasGradients,
                                  Tensor_t &inputActivation,
-                                 const Tensor_t &activationGradients,
+                                 Tensor_t &activationGradients,
                                  const Matrix_t &weights,
                                  const Tensor_t &activationBackward,
+                                 const Tensor_t &outputTensor,
+                                 const ConvDescriptors_t & descriptors,
                                  size_t /*batchSize*/,   size_t /*inputHeight*/, 
                                  size_t /*inputWidth*/,  size_t /*depth*/, 
                                  size_t /*height*/,      size_t /*width*/, 
                                  size_t /*filterDepth*/, size_t /*filterHeight*/, 
-                                 size_t /*filterWidth*/, size_t /*nLocalViews*/);
-#endif
+                                 size_t /*filterWidth*/, size_t /*nLocalViews*/,
+                                 void * cudnnConvBwdWorkspaces = nullptr, 
+                                 void * cudnnFilterBwdWorkspace = nullptr);
 
    /** Utility function for calculating the activation gradients of the layer
     *  before the convolutional layer. */
@@ -606,7 +605,7 @@ public:
    static void AdamUpdateSecondMom(Matrix_t & A, const Matrix_t & B, Scalar_t beta);*/
 
       // printing of tensor
-   static void PrintTensor( const Tensor_t & A, const std::string name = "tensor") {}
+   static void PrintTensor( const Tensor_t & A, const std::string name = "tensor");
 
 
 
@@ -618,6 +617,8 @@ public:
    * m elements in \p B.
    */
    static void SumRows(Matrix_t & B, const Matrix_t & A);
+
+
 
 };
 
@@ -699,6 +700,13 @@ void TCudnn<AFloat>::FreeWorkspace(void * workspace) {
 
 //____________________________________________________________________________
 /*template <typename AFloat>
+void TCudnn<AFloat>::Copy(Tensor_t & A, const Tensor_t & B) {
+  if (A.GetSize() >= B.GetSize()) return;
+  cudaMemcpy(A.GetDataPointer(), B.GetDataPointer(), B.GetSize() * sizeof(AFloat), cudaMemcpyDeviceToDevice);
+}*/
+
+//____________________________________________________________________________
+/*template <typename AFloat>
 template <typename AMatrix_t>
 void TCuda<AFloat>::CopyDiffArch(TCudaMatrix<AFloat> &B,
                         const AMatrix_t &A)
@@ -719,6 +727,65 @@ void TCuda<AFloat>::CopyDiffArch(std::vector<TCudaMatrix<AFloat>> &B,
       CopyDiffArch(B[i], A[i]);
    }
 }*/
+
+template <typename Real_t>
+void TCudnn<Real_t>::PrintTensor(const typename TCudnn<Real_t>::Tensor_t & A, const std::string name ) 
+{
+   std::cout << name << "  size = " << A.GetSize() << " shape = { "; 
+   auto shape = A.GetShape(); 
+   for (size_t k = 0; k < shape.size()-1; ++k)
+      std::cout << shape[k] << " , ";
+   std::cout << shape.back() << " } ";
+   std::cout << " strides = { ";
+   auto strides = A.GetStrides(); 
+   for (size_t k = 0; k < strides.size()-1; ++k)
+      std::cout << strides[k] << " , ";
+   std::cout << strides.back() << " }\n ";
+
+   if (A.GetShape().size() == 2 ) { 
+      for (size_t i = 0; i < A.GetShape()[0]; ++i) {
+         std::cout << "{ ";
+         for (size_t j = 0; j < A.GetShape()[1]; ++j) {
+            std::cout << A(i,j) << " ";
+         }
+         std::cout << " } " << std::endl;
+      }
+   } else if  (A.GetShape().size() == 3 ) {
+      for (size_t i = 0; i < A.GetFirstSize(); ++i) {
+         std::cout << "{ ";
+         for (size_t j = 0; j < A.GetHSize(); ++j) {
+            std::cout << "{ ";
+            for (size_t k = 0; k < A.GetWSize(); ++k) {
+               std::cout << A(i,j,k) << " ";
+            }
+            std::cout << " } " << std::endl;
+         }
+         std::cout << " } " << std::endl;
+      }
+   } else if  (A.GetShape().size() == 4 ) {
+      for (size_t i = 0; i < A.GetShape()[0]; ++i) {
+         std::cout << "{ ";
+         for (size_t j = 0; j < A.GetShape()[1]; ++j) {
+            std::cout << "{ ";
+            for (size_t k = 0; k < A.GetShape()[2]; ++k) {
+               for (size_t l = 0; l < A.GetShape()[3]; ++l) {
+                  std::cout << A(i,j,k,l) << " ";
+               }  
+               std::cout << " } " << std::endl;
+            }
+            std::cout << " } " << std::endl;
+         }
+         std::cout << " } " << std::endl;
+      }
+   }
+   else {  
+      for (size_t l = 0; l < A.GetSize(); ++l) {
+         std::cout << A.GetData()[l] << " ";
+      }
+      std::cout << "\n";
+   }  
+}
+
 
 } // namespace DNN
 } // namespace TMVA
