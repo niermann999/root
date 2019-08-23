@@ -16,6 +16,9 @@
  //////////////////////////////////////////////////////////////////
 
 #include "TMVA/DNN/Architectures/TCudnn.h"
+
+#include "TMVA/DNN/CNN/ConvLayer.h"
+
 /*#include "TMVA/DNN/Architectures/Cuda.h"
 #include "TMVA/DNN/Architectures/Cuda/Device.h"
 #include "Kernels.cuh"*/
@@ -214,6 +217,18 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
 //                                    const AFloat alpha,
 //                                    const AFloat beta)
 {
+
+   ((Tensor_t & )input).Reshape( {params.batchSize, params.inputDepth, params.inputHeight, params.inputWidth}); 
+
+   size_t outputHeight =  DNN::CNN::TConvLayer<TCudnn<AFloat>>::calculateDimension(params.inputHeight, params.filterHeight, params.paddingHeight, params.strideRows);
+   size_t outputWidth =  DNN::CNN::TConvLayer<TCudnn<AFloat>>::calculateDimension(params.inputWidth, params.filterWidth, params.paddingWidth, params.strideCols);
+
+   outputTensor.Reshape({params.batchSize, params.numberFilters, outputHeight, outputWidth});
+   inputActivation.Reshape( {params.batchSize, params.numberFilters, outputHeight, outputWidth});
+
+   ((Tensor_t & )weights).Reshape( { params.numberFilters, params.inputDepth, params.filterHeight, params.filterWidth } );
+   //biases.Reshape ( { 1,params.numberFilters, 1, 1});
+
    AFloat alpha = 1.0; 
    AFloat beta  = 0.0; 
    cudnnHandle_t cudnnHandle = input.GetCudnnHandle();
@@ -315,6 +330,14 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
                                        void * cudnnConvBwdWorkspaces, 
                                        void * cudnnFilterBwdWorkspace)
 {
+
+
+   activationGradients.Reshape( outputTensor.GetShape());
+   weightGradients.Reshape( weights.GetShape());
+   biasGradients.Reshape({ 1, outputTensor.GetShape()[1], 1, 1});   // second output dimension is number of filters
+   // activationGradientsBackward.Reshape()
+   // activationBackward.Reshape
+
    //--------------------------------------------------------------------------
    // Activation function gradient
    //--------------------------------------------------------------------------

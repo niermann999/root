@@ -54,15 +54,14 @@ public:
    using WeightsDescriptor_t = typename Architecture_t::FilterDescriptor_t;
    using HelperDescriptor_t  = typename Architecture_t::ActivationDescriptor_t;
 
-private:
    /* Calculate the output dimension of the convolutional layer */
-   size_t calculateDimension(size_t imgDim, size_t fltDim, size_t padding, size_t stride);
+   static size_t calculateDimension(size_t imgDim, size_t fltDim, size_t padding, size_t stride);
 
    /* Calculate the number of pixels in a single receptive field */
-   size_t inline calculateNLocalViewPixels(size_t depth, size_t height, size_t width) { return depth * height * width; }
+   static size_t inline calculateNLocalViewPixels(size_t depth, size_t height, size_t width) { return depth * height * width; }
 
    /* Calculate the number of receptive fields in an image given the filter and image sizes */
-   size_t calculateNLocalViews(size_t inputHeight, size_t filterHeight, size_t paddingHeight, size_t strideRows,
+   static size_t calculateNLocalViews(size_t inputHeight, size_t filterHeight, size_t paddingHeight, size_t strideRows,
                                size_t inputWidth, size_t filterWidth, size_t paddingWidth, size_t strideCols);
 
 protected:
@@ -234,7 +233,13 @@ TConvLayer<Architecture_t>::TConvLayer(size_t batchSize, size_t inputDepth, size
    //    fInputActivation.emplace_back(depth, fNLocalViews);
    //    fForwardMatrices.emplace_back(fNLocalViews, fNLocalViewPixels);
    // }
-   Architecture_t::PrepareInternals(fForwardTensor);
+   TConvParams params(this->GetBatchSize(), this->GetInputDepth(), this->GetInputHeight(), this->GetInputWidth(),
+                      this->GetDepth(), this->GetFilterHeight(), this->GetFilterWidth(),
+                      this->GetStrideRows(), this->GetStrideCols(), this->GetPaddingHeight(), this->GetPaddingWidth());
+
+   // Architecture_t::PrepareInternals(this->GetOutput(), this->GetInputActivation(), this->GetWeights(),
+   //                                  this->GetBiases(), this->GetWeightGradients(), this->GetBiasGradients(), 
+   //                                  this->GetActivationGradients(), params);
 }
 
 //______________________________________________________________________________
