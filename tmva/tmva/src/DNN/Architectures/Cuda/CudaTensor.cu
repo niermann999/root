@@ -99,7 +99,8 @@ TCudaTensor<AFloat>::TCudaTensor(std::vector<TMatrixT<Double_t> >& inputTensor,
                                  int device, int streamIndx)
     : fShape(shape), fStrides(shape.size()), fNDim(shape.size()),  
       fElementBuffer(inputTensor.size()*inputTensor[0].GetNoElements(), 0),
-      fDevice(device), fStreamIndx(streamIndx), fTensorDescriptor(nullptr)
+      fDevice(device), fStreamIndx(streamIndx), fTensorDescriptor(nullptr),
+      fMemoryLayout(layout)
 {
    // Need a shape array with at least 4 entries for cuDNN tensors
    if (fNDim < 4) {
@@ -140,7 +141,7 @@ TCudaTensor<AFloat>::TCudaTensor(const std::vector<size_t> & shape,
                                  TCudaTensor::MemoryLayout layout,
                                  int device, int streamIndx)
     : fShape(shape), fStrides(shape.size()), fNDim(shape.size()), fDevice(device), fStreamIndx(streamIndx),
-      fTensorDescriptor(nullptr)
+      fTensorDescriptor(nullptr), fMemoryLayout(layout)
 {
    fStrides = ComputeStridesFromShape(fShape, layout==MemoryLayout::RowMajor);
    
@@ -209,8 +210,10 @@ TCudaTensor<AFloat>::TCudaTensor(const TCudaMatrix<AFloat>& matrix, size_t dim) 
    // No deep copy
    if (dim > 2) {
       // change shape from (nrows,ncols) to (nrows,ncols,1,1)
+      // this works onlt for coolum major layout since this is same of TCudaMatrix
       fShape.insert(fShape.end(), dim-2, 1);
-      fStrides.insert(fStrides.begin(),dim-2,1);
+      fStrides.insert(fStrides.end(),dim-2,fSize);
+      fNDim = dim; 
    }
 
    InitializeCuda();
