@@ -98,10 +98,9 @@ auto testHadamrdMultiplication(size_t ntests)
    Scalar_t mean = 5.0, sigma = 2.0;
 
    for (size_t t = 0; t < ntests; t++) {
-      size_t m, n, k;
-      m = rand() % 100 + 1;
-      n = rand() % 100 + 1;
-      k = rand() % 100 + 1;
+      size_t m = rand() % 100 + 1;
+      size_t n = rand() % 100 + 1;
+      //k = rand() % 100 + 1;
 
       TMatrixT<Scalar_t> ARef(m,n), A2Ref(m,n);
       TMVA::DNN::randomMatrix(ARef, mean, sigma);

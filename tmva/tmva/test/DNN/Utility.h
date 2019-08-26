@@ -507,8 +507,8 @@ auto maximumRelativeError(const Matrix1 &X, const Matrix2 &Y) -> Double_t
    Int_t m = X.GetNrows();
    Int_t n = X.GetNcols();
 
-   assert(m == Y.GetNrows());
-   assert(n == Y.GetNcols());
+   assert(m == (Int_t) Y.GetNrows());
+   assert(n == (Int_t) Y.GetNcols());
 
    for (Int_t i = 0; i < m; i++) {
       for (Int_t j = 0; j < n; j++) {
@@ -524,12 +524,12 @@ template <typename Tensor1, typename Tensor2>
 auto maximumRelativeErrorTensor(const Tensor1 &X, const Tensor2 &Y) -> Double_t
 {
 
-   Int_t fsize = X.GetFirstSize(); 
+   size_t fsize = X.GetFirstSize(); 
    assert(fsize == Y.GetFirstSize());
 
    Double_t curError, maxError = 0.0;
 
-   for (Int_t i = 0; i < fsize; i++) {
+   for (size_t i = 0; i < fsize; i++) {
       curError = maximumRelativeError( X.At(i).GetMatrix(), Y.At(i).GetMatrix() );
       maxError = std::max(curError, maxError);
    }

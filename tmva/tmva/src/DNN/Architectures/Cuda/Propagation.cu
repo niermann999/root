@@ -91,7 +91,7 @@ template<typename AFloat>
 void TCuda<AFloat>::Backward(TCudaTensor<AFloat> & activation_gradients_backward,
                              TCudaMatrix<AFloat> & weight_gradients,
                              TCudaMatrix<AFloat> & bias_gradients,
-                             TCudaTensor<AFloat> & df,
+                             const TCudaTensor<AFloat> & df,
                              const TCudaTensor<AFloat> & activation_gradients,
                              const TCudaMatrix<AFloat> & weights,
                              const TCudaTensor<AFloat> & activation_backward)
@@ -99,7 +99,8 @@ void TCuda<AFloat>::Backward(TCudaTensor<AFloat> & activation_gradients_backward
    // Compute element-wise product.
    //Matrix_t df_m = df.GetMatrix(); 
 
-   TCuda<AFloat>::Hadamard(df, activation_gradients);
+   // df  is the output of ActivationBackward
+   //TCuda<AFloat>::Hadamard(df, activation_gradients);
    //TCuda<AFloat>::Hadamard(df_m, activation_gradients.GetMatrix());
 
    Matrix_t df_m = df.GetMatrix(); 
@@ -233,7 +234,7 @@ void TCuda<AFloat>::PrepareInternals(TCudaTensor<AFloat> & /* inputPrime */ )
 
 template <typename AFloat>
 void TCuda<AFloat>::ConvLayerForward(TCudaTensor<AFloat> & output,
-                                     TCudaTensor<AFloat> & derivatives,
+                                     TCudaTensor<AFloat> & inputActivationFunc,
                                      const TCudaTensor<AFloat> &input,
                                      const TCudaMatrix<AFloat> &weights, const TCudaMatrix<AFloat> & biases,
                                      const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
@@ -261,8 +262,12 @@ void TCuda<AFloat>::ConvLayerForward(TCudaTensor<AFloat> & output,
       AddConvBiases(output_m, biases);
    }
 
-   evaluateDerivative<TCuda<AFloat>>(derivatives, activFunc, output);
-   evaluate<TCuda<AFloat>>(output, activFunc);
+   //evaluateDerivative<TCuda<AFloat>>(derivatives, activFunc, output);
+   //evaluate<TCuda<AFloat>>(output, activFunc);
+   
+   // save output of convolution before activation function evaluation
+   Copy(inputActivationFunc, output);
+   ActivationFunctionForward(output, activFunc, ActivationDescriptor_t() ); 
   
 }
 
@@ -271,11 +276,12 @@ template<typename AFloat>
 void TCuda<AFloat>::ConvLayerBackward(TCudaTensor<AFloat> & activationGradientsBackward,
                                       TCudaMatrix<AFloat> & weightGradients,
                                       TCudaMatrix<AFloat> & biasGradients,
-                                      TCudaTensor<AFloat> & df,
+                                      TCudaTensor<AFloat> & inputActivationFunc,
                                       TCudaTensor<AFloat> & activationGradients,
                                       const TCudaMatrix<AFloat> & weights,
                                       const TCudaTensor<AFloat> & activationBackward,
-                                      const Tensor_t & /*outputTensor*/,
+                                      const Tensor_t & outputTensor,
+                                      EActivationFunction activFunc,
                                       const ConvDescriptors_t & /*descriptors*/,
                                       size_t batchSize,
                                       size_t inputHeight,
@@ -291,8 +297,14 @@ void TCuda<AFloat>::ConvLayerBackward(TCudaTensor<AFloat> & activationGradientsB
                                       void * /*cudnnFilterBwdWorkspace*/)
 {
     
-   // Compute element-wise product.
-   Hadamard(df, activationGradients);
+   // Compute activation backward
+  //Tensor_t df = activationGradients;   // this is a shallow copy
+   Tensor_t df(activationGradients.GetShape() );  
+   ActivationFunctionBackward(df, outputTensor, activationGradients, inputActivationFunc, 
+                              activFunc, ActivationDescriptor_t() );
+
+
+   //Hadamard(df, activationGradients);
    
 
    // Calculate the activation gradients of the previous layer

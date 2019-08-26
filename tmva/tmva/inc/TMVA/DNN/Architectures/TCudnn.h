@@ -167,14 +167,15 @@ public:
                                   const AFloat alpha = 1, 
                                   const AFloat beta = 1) {}
 
-   static void Activation(Tensor_t & X, EActivationFunction activFunct,
+   static void ActivationFunctionForward(Tensor_t & X, EActivationFunction activFunct,
                           const ActivationDescriptor_t activationDescr,
                           const double coef = 0.0, const AFloat alpha = 1, 
                           const AFloat beta = 0);
                           
    /** Computes the gradient of the activation function */
-   static void ActivationFunctionBackward(const Tensor_t & Y, const Tensor_t & dY, 
-                                          const Tensor_t & X, Tensor_t & dX,
+   static void ActivationFunctionBackward(Tensor_t & dX, const Tensor_t & Y, 
+                                          const Tensor_t & dY,  const Tensor_t & X, 
+                                          EActivationFunction activFunct,
                                           const ActivationDescriptor_t activationDescr,
                                           const AFloat alpha = 1, 
                                           const AFloat beta = 0);
@@ -241,7 +242,7 @@ public:
    /** Sigmoid transformation is implicitly applied, thus \p output should
     *  hold the linear activations of the last layer in the net. */
    static Scalar_t CrossEntropy(const Matrix_t &Y, const Matrix_t &output,
-                                const Matrix_t &weights) {}
+                                const Matrix_t &weights) { return 0;}
 
    static void CrossEntropyGradients(Matrix_t &dY, const Matrix_t &Y,
                                      const Matrix_t &output, const Matrix_t &weights) {}
@@ -249,7 +250,7 @@ public:
    /** Softmax transformation is implicitly applied, thus \p output should
     *  hold the linear activations of the last layer in the net. */
    static Scalar_t SoftmaxCrossEntropy(const Matrix_t &Y, const Matrix_t &output,
-                                       const Matrix_t &weights) {}
+                                       const Matrix_t &weights) { return 0; }
    static void SoftmaxCrossEntropyGradients(Matrix_t &dY, const Matrix_t &Y,
                                             const Matrix_t &output, const Matrix_t &weights) {}
    ///@}
@@ -386,7 +387,7 @@ public:
 
    /** Forward propagation in the Convolutional layer */
    static void ConvLayerForward(Tensor_t & output,
-                                Tensor_t & derivatives,
+                                Tensor_t & inputActivationFunc, // this is output conv w/o activ func.
                                 const Tensor_t &input,
                                 const Matrix_t &weights, const Matrix_t & biases,
                                 const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
@@ -416,6 +417,7 @@ public:
                                  const Matrix_t &weights,
                                  const Tensor_t &activationBackward,
                                  const Tensor_t &outputTensor,
+                                 EActivationFunction activFunc,
                                  const ConvDescriptors_t & descriptors,
                                  size_t /*batchSize*/,   size_t /*inputHeight*/, 
                                  size_t /*inputWidth*/,  size_t /*depth*/, 

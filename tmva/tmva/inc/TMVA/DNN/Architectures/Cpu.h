@@ -138,7 +138,7 @@ public:
    static void Backward(Tensor_t & activationGradientsBackward,
                         Matrix_t & weightGradients,
                         Matrix_t & biasGradients,
-                        Tensor_t & df,
+                        const Tensor_t & df,
                         const Tensor_t & activationGradients,
                         const Matrix_t & weights,
                         const Tensor_t & activationBackward);
@@ -196,6 +196,19 @@ public:
     Tensor_t tA(A);
     evaluate<TCpu<AReal>>(tA,f);
    }*/
+
+   static void ActivationFunctionForward(Tensor_t & X, EActivationFunction activFunct,
+                          const ActivationDescriptor_t activationDescr,
+                          const double coef = 0.0, const Scalar_t alpha = 1, 
+                          const Scalar_t beta = 0);
+
+   /** Computes the gradient of the activation function */
+   static void ActivationFunctionBackward(Tensor_t & dX, const Tensor_t & Y, 
+                                          const Tensor_t & dY,  const Tensor_t & X, 
+                                          EActivationFunction activFunct,
+                                          const ActivationDescriptor_t activationDescr,
+                                          const Scalar_t alpha = 1, 
+                                          const Scalar_t beta = 0);
 
    static void IdentityDerivative(Tensor_t & B,
                                   const Tensor_t &A);
@@ -395,7 +408,7 @@ public:
 
    /** Forward propagation in the Convolutional layer */
    static void ConvLayerForward(Tensor_t & output,
-                                Tensor_t & derivatives,
+                                Tensor_t & inputActivationFunc,
                                 const Tensor_t &input,
                                 const Matrix_t &weights, const Matrix_t & biases,
                                 const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
@@ -421,7 +434,8 @@ public:
                                  Tensor_t &activationGradients,
                                  const Matrix_t &weights,
                                  const Tensor_t &activationBackward,
-                                 const Tensor_t & /*outputTensor*/,
+                                 const Tensor_t &  outputTensor,
+                                 EActivationFunction activFunc,
                                  const ConvDescriptors_t & /*descriptors*/, 
                                  size_t batchSize,   size_t inputHeight, 
                                  size_t inputWidth,  size_t depth, 

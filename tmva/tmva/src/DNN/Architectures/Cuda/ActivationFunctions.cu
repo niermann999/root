@@ -16,12 +16,37 @@
 
 #include "TMVA/DNN/Architectures/Cuda.h"
 #include "TMVA/DNN/Architectures/Cuda/Device.h"
+#include "TMVA/DNN/Functions.h"
 #include "Kernels.cuh"
 
 namespace TMVA
 {
 namespace DNN
 {
+//______________________________________________________________________________
+template<typename AFloat>
+void TCuda<AFloat>::ActivationFunctionForward(Tensor_t & X, EActivationFunction activFunct, 
+                                              const ActivationDescriptor_t /* activationDescr */,  
+                                             const double /* coef */, const AFloat /*alpha */, const AFloat /*beta*/)
+{
+   // scaling and translation is not yet implemented
+   TMVA::DNN::evaluate<TCuda<AFloat>>( X, activFunct);
+}
+//______________________________________________________________________________
+template<typename AFloat>
+void TCuda<AFloat>::ActivationFunctionBackward(Tensor_t & dX, const Tensor_t & /* Y */,  
+                                                const Tensor_t & dY, const Tensor_t & X, 
+                                                EActivationFunction activFunct,
+                                                const ActivationDescriptor_t /* activationDescr */, 
+                                                const AFloat /* alpha */, const AFloat /* beta */)
+{
+   // scaling and translation not yet implemented
+   // output tensor (Y) could also be used to speed up derivative calculation
+   // compute dx = f'(x)
+   TMVA::DNN::evaluateDerivative<TCuda<AFloat>>(dX, activFunct, X); 
+    // Compute element-wise product.  dx = f'(x) * dY
+   Hadamard(dX, dY);
+}
 
 //______________________________________________________________________________
 template<typename AFloat>

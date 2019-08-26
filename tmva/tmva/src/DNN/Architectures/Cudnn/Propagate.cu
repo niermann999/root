@@ -304,7 +304,7 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
    TCudnn<AFloat>::Copy(inputActivation, outputTensor);
 
    // Apply activation
-   TCudnn<AFloat>::Activation(outputTensor, activFunc, descriptors.HelperDescriptor, 0.0, 1.0, 0.0);
+   TCudnn<AFloat>::ActivationFunctionForward(outputTensor, activFunc, descriptors.HelperDescriptor, 0.0, 1.0, 0.0);
    
    //TCudnn<AFloat>::PrintTensor(outputTensor, "after activation");
    
@@ -321,6 +321,7 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
                                        const Matrix_t &weights,
                                        const Tensor_t &activationBackward,
                                        const Tensor_t &outputTensor,
+                                       EActivationFunction activFunc,
                                        const ConvDescriptors_t & descriptors,
                                        size_t /*batchSize*/,   size_t /*inputHeight*/, 
                                        size_t /*inputWidth*/,  size_t /*depth*/, 
@@ -348,7 +349,8 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
    // dy : Gradient of activation from the following layer (backpropagation)-> activationGradients
    
    //if (descriptors.HelperDescriptor)
-   ActivationFunctionBackward(outputTensor, activationGradients, inputActivation, activationGradients, descriptors.HelperDescriptor);  //y dy x dx
+   ActivationFunctionBackward(activationGradients, outputTensor, activationGradients, inputActivation, 
+                              activFunc, descriptors.HelperDescriptor);  //y dy x dx
    
    //--------------------------------------------------------------------------
    // Network Activation gradient
