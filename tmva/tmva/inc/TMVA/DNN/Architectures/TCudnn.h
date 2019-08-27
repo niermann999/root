@@ -723,21 +723,20 @@ void TCudnn<AFloat>::InitializeDescriptor(PoolingDescriptor_t & poolingDescr) {
 //____________________________________________________________________________
 template<typename AFloat>
 template<typename Layer_t>
-<<<<<<< HEAD
-void TCudnn<AFloat>::ReleaseCNNDescriptors(TDescriptors *  descriptors, Layer_t *L) {
-   auto cnnDescriptors = static_cast<TCudnn<AFloat>::ConvDescriptors_t *>(descriptors);
-   ReleaseDescriptor(cnnDescriptors->LayerDescriptor);
-   ReleaseDescriptor(cnnDescriptors->HelperDescriptor);
-   ReleaseDescriptor(cnnDescriptors->WeightsDescriptor);
-=======
+// //<<<<<<< HEAD
+// void TCudnn<AFloat>::ReleaseCNNDescriptors(TDescriptors *  descriptors, Layer_t *L) {
+//    auto cnnDescriptors = static_cast<TCudnn<AFloat>::ConvDescriptors_t *>(descriptors);
+//    ReleaseDescriptor(cnnDescriptors->LayerDescriptor);
+//    ReleaseDescriptor(cnnDescriptors->HelperDescriptor);
+//    ReleaseDescriptor(cnnDescriptors->WeightsDescriptor);
+// =======
 void TCudnn<AFloat>::ReleaseConvDescriptors(TDescriptors * descriptors, Layer_t *L) {
    auto convDescriptors = static_cast<ConvDescriptors_t *>(descriptors);
    ReleaseDescriptor(convDescriptors->LayerDescriptor);
    ReleaseDescriptor(convDescriptors->HelperDescriptor);
    ReleaseDescriptor(convDescriptors->WeightsDescriptor);
->>>>>>> Workspace initialization is now done in the constructor.
 }
-   
+
 //____________________________________________________________________________
 template <typename AFloat>
 void TCudnn<AFloat>::ReleaseDescriptor(ActivationDescriptor_t & activationDescr) {

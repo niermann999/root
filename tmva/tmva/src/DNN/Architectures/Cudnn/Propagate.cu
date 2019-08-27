@@ -182,8 +182,8 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
    AFloat beta  = 0.0; 
    cudnnHandle_t cudnnHandle = input.GetCudnnHandle();
 
-<<<<<<< HEAD
 #if 0
+<<<<<<< HEAD
    
    //FIXME: Move this to constructor
    cudnnDataType_t   cudnnDataType;
@@ -238,9 +238,9 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
                                                       outputTensor.GetTensorDescriptor(),
                                                       algorithm,
                                                       &workSpaceSizeInBytes));
-                                                  
+
    if (workSpaceSizeInBytes) cudaMalloc(&cudnnWorkspace, workSpaceSizeInBytes*sizeof(AFloat));
-   
+
 #endif
 /// >>>>>>> Workspace initialization is now done in the constructor.
 
@@ -258,10 +258,10 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
                                       &beta,
                                       outputTensor.GetTensorDescriptor(),
                                       outputTensor.GetDataPointer()));
-                                                                        
+
    // Apply biases
    AddConvBiases(outputTensor, biases);
-   
+
    // Store the conv output before application of activation to use in the backward pass
    TCudnn<AFloat>::Copy(inputActivation, outputTensor);
 
