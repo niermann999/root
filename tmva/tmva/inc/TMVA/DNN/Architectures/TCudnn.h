@@ -65,16 +65,22 @@ public:
    using ConvolutionDescriptor_t = cudnnConvolutionDescriptor_t;
    using DropoutDescriptor_t     = cudnnDropoutDescriptor_t;
    using FilterDescriptor_t      = cudnnFilterDescriptor_t;
-   using OpTensorDescriptor_t    = cudnnOpTensorDescriptor_t;
+   //using OpTensorDescriptor_t    = cudnnOpTensorDescriptor_t;
    using PoolingDescriptor_t     = cudnnPoolingDescriptor_t;
-   using ReductionDescriptor_t   = cudnnReduceTensorDescriptor_t;
+   //using ReductionDescriptor_t   = cudnnReduceTensorDescriptor_t;
+   using AlgorithmForward_t      = cudnnConvolutionFwdAlgo_t;
+   using AlgorithmBackward_t     = cudnnConvolutionBwdDataAlgo_t;
+   using AlgorithmHelper_t       = cudnnConvolutionBwdFilterAlgo_t;
+   using AlgorithmDataType_t     = cudnnDataType_t;
     
    using EmptyDescriptor_t       = TCudnnEmptyDescriptor;        // Used if a descriptor is not needed in a class
     
    using ConvLayer_t             = CNN::TConvLayer<TCudnn<AFloat>>;
    using ConvDescriptors_t       = CNN::TCNNDescriptors<ConvLayer_t>;
+   using ConvWorkspace_t         = CNN::TCNNWorkspace<ConvLayer_t>;
    using PoolingLayer_t          = CNN::TMaxPoolLayer<TCudnn<AFloat>>;
    using PoolingDescriptors_t    = CNN::TCNNDescriptors<PoolingLayer_t>;
+   using PoolingWorkspace_t      = CNN::TCNNWorkspace<PoolingLayer_t>;
 
    //____________________________________________________________________________
    //
@@ -87,6 +93,9 @@ public:
    static void InitializePoolingDescriptors(TDescriptors * & descriptors, double coef = 0.0, 
                                             PoolingLayer_t *L = nullptr);
 
+
+#if 0
+   <<<<<<< HEAD
    template<typename Layer_t>
    static void InitializeCNNDescriptors(TDescriptors * & descriptors, Layer_t *L = nullptr);
    
@@ -100,6 +109,10 @@ public:
    static void ReleaseCNNDescriptors(TDescriptors * descriptors, Layer_t *L = nullptr);
 
    //static void ReleaseCNNDescriptors(TDescriptors * descriptors, Layer_t *L = nullptr);
+=======
+#endif
+   template<typename Layer_t>
+   static void ReleaseConvDescriptors(TDescriptors * descriptors, Layer_t *L = nullptr);
    
    static void ReleaseDescriptor(EmptyDescriptor_t &       emptyDescr) {}        // Does nothing
    static void ReleaseDescriptor(ActivationDescriptor_t &  activationDescr);
@@ -107,7 +120,12 @@ public:
    static void ReleaseDescriptor(FilterDescriptor_t &      filterDescr);
    static void ReleaseDescriptor(PoolingDescriptor_t &     poolingDescr);
    
-   static void FreeWorkspace(void * workspace);
+   static void InitializeConvWorkspace(TWorkspace * & workspace,
+                                       TDescriptors * & descriptors,
+                                       const DNN::CNN::TConvParams & params,
+                                       ConvLayer_t *L = nullptr);
+
+   static void FreeConvWorkspace(TWorkspace * workspace, ConvLayer_t *L = nullptr);
    //____________________________________________________________________________
    //
    // Propagation
@@ -404,10 +422,12 @@ public:
                                 Tensor_t & inputActivationFunc, // this is output conv w/o activ func.
                                 const Tensor_t &input,
                                 const Matrix_t &weights, const Matrix_t & biases,
-                                const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
+                                const DNN::CNN::TConvParams & params,
+                                EActivationFunction activFunc,
                                 Tensor_t & /* inputPrime */,
                                 const ConvDescriptors_t & descriptors,
-                                void * cudnnWorkspace = nullptr);
+                                ConvWorkspace_t & workspace);
+                                //void * cudnnWorkspace = nullptr);
                                 //const AFloat alpha = 1,
                                 //const AFloat beta  = 1);
 
@@ -433,14 +453,15 @@ public:
                                  const Tensor_t &outputTensor,
                                  EActivationFunction activFunc,
                                  const ConvDescriptors_t & descriptors,
+                                 ConvWorkspace_t & workspace,
                                  size_t /*batchSize*/,   size_t /*inputHeight*/, 
                                  size_t /*inputWidth*/,  size_t /*depth*/, 
                                  size_t /*height*/,      size_t /*width*/, 
                                  size_t /*filterDepth*/, size_t /*filterHeight*/, 
-                                 size_t /*filterWidth*/, size_t /*nLocalViews*/,
-                                 EActivationFunction activFunct = EActivationFunction::kIdentity,
-                                 void * cudnnConvBwdWorkspaces = nullptr, 
-                                 void * cudnnFilterBwdWorkspace = nullptr);
+                                 size_t /*filterWidth*/, size_t /*nLocalViews*/ );
+                                 //EActivationFunction activFunct = EActivationFunction::kIdentity);
+                                 /*void * cudnnConvBwdWorkspaces = nullptr, 
+                                 void * cudnnFilterBwdWorkspace = nullptr);*/
 
    /** Utility function for calculating the activation gradients of the layer
     *  before the convolutional layer. */
@@ -702,11 +723,19 @@ void TCudnn<AFloat>::InitializeDescriptor(PoolingDescriptor_t & poolingDescr) {
 //____________________________________________________________________________
 template<typename AFloat>
 template<typename Layer_t>
+<<<<<<< HEAD
 void TCudnn<AFloat>::ReleaseCNNDescriptors(TDescriptors *  descriptors, Layer_t *L) {
    auto cnnDescriptors = static_cast<TCudnn<AFloat>::ConvDescriptors_t *>(descriptors);
    ReleaseDescriptor(cnnDescriptors->LayerDescriptor);
    ReleaseDescriptor(cnnDescriptors->HelperDescriptor);
    ReleaseDescriptor(cnnDescriptors->WeightsDescriptor);
+=======
+void TCudnn<AFloat>::ReleaseConvDescriptors(TDescriptors * descriptors, Layer_t *L) {
+   auto convDescriptors = static_cast<ConvDescriptors_t *>(descriptors);
+   ReleaseDescriptor(convDescriptors->LayerDescriptor);
+   ReleaseDescriptor(convDescriptors->HelperDescriptor);
+   ReleaseDescriptor(convDescriptors->WeightsDescriptor);
+>>>>>>> Workspace initialization is now done in the constructor.
 }
    
 //____________________________________________________________________________
@@ -735,8 +764,107 @@ void TCudnn<AFloat>::ReleaseDescriptor(PoolingDescriptor_t & poolingDescr) {
 
 //____________________________________________________________________________
 template <typename AFloat>
-void TCudnn<AFloat>::FreeWorkspace(void * workspace) {
-   if (workspace) cudaFree(workspace);
+void TCudnn<AFloat>::InitializeConvWorkspace(TWorkspace * & workspace,
+                                             TDescriptors * & descriptors, 
+                                             const DNN::CNN::TConvParams & params,
+                                             ConvLayer_t *L) {
+   auto convWorkspace = new ConvWorkspace_t ();
+   auto convDescriptors = static_cast<ConvDescriptors_t *>(descriptors);
+
+   // FIXME: Use descriptors instead (Tensor device memory is otherwise allocated during initialization)
+   Tensor_t inputTensor  ({params.batchSize, params.inputDepth, params.inputHeight, params.inputWidth}, MemoryLayout::RowMajor, 0, 0);
+   size_t outputHeight = ConvLayer_t::calculateDimension(params.inputHeight, params.filterHeight, params.paddingHeight, params.strideRows);
+   size_t outputWidth  = ConvLayer_t::calculateDimension(params.inputWidth, params.filterWidth, params.paddingWidth, params.strideCols);
+   Tensor_t outputTensor ({params.batchSize, params.numberFilters, outputHeight, outputWidth}, MemoryLayout::RowMajor, 0, 0);
+   
+   // Get access to cudnn library handle, which is static for the CudaTensor class
+   cudnnHandle_t cudnnHandle = inputTensor.GetCudnnHandle();
+   
+   // cuDNN decides which algorithm to use
+   // More detailed alternative: cudnnFindConvolutionForwardAlgorithm
+   CUDNNCHECK(cudnnGetConvolutionForwardAlgorithm(cudnnHandle,
+                                                  inputTensor.GetTensorDescriptor(),
+                                                  convDescriptors->WeightsDescriptor,
+                                                  convDescriptors->LayerDescriptor,
+                                                  outputTensor.GetTensorDescriptor(),
+                                                  CUDNN_CONVOLUTION_FWD_PREFER_FASTEST,
+                                                  0,     // Memory limit in bytes for mode CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
+                                                  &convWorkspace->AlgorithmForward));
+                                                  
+   // Allocate memory for the convolution
+   //size_t workSpaceSizeInBytes = 0;
+   CUDNNCHECK(cudnnGetConvolutionForwardWorkspaceSize(cudnnHandle,
+                                                      inputTensor.GetTensorDescriptor(),
+                                                      convDescriptors->WeightsDescriptor,
+                                                      convDescriptors->LayerDescriptor,
+                                                      outputTensor.GetTensorDescriptor(),
+                                                      convWorkspace->AlgorithmForward,
+                                                      &convWorkspace->ForwardWorkspaceSize));
+                                                  
+   if (convWorkspace->ForwardWorkspaceSize) cudaMalloc(&convWorkspace->ForwardWorkspace, convWorkspace->ForwardWorkspaceSize*sizeof(AFloat));
+
+   //
+   // Backward Algorithm
+   //
+   
+   Tensor_t activationGradients ({params.batchSize, params.numberFilters, outputHeight, outputWidth}, MemoryLayout::RowMajor, 0, 0);
+   Tensor_t activationGradientsBackward ({params.batchSize, params.inputDepth, params.inputHeight, params.inputWidth}, MemoryLayout::RowMajor, 0, 0);
+   cudnnHandle = activationGradients.GetCudnnHandle();
+   // dx : Activation gradient to be computed                               -> activationGradients [in place op] 
+   // dy : Gradient of activation from the following layer (backpropagation)-> activationGradients
+   CUDNNCHECK(cudnnGetConvolutionBackwardDataAlgorithm(cudnnHandle,
+                                                       convDescriptors->WeightsDescriptor,
+                                                       activationGradients.GetTensorDescriptor(),
+                                                       convDescriptors->LayerDescriptor,
+                                                       activationGradientsBackward.GetTensorDescriptor(),
+                                                       CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST,
+                                                       0,
+                                                       &convWorkspace->AlgorithmBackward));
+    
+   CUDNNCHECK(cudnnGetConvolutionBackwardDataWorkspaceSize(cudnnHandle,
+                                                           convDescriptors->WeightsDescriptor,
+                                                           activationGradients.GetTensorDescriptor(),
+                                                           convDescriptors->LayerDescriptor,
+                                                           activationGradientsBackward.GetTensorDescriptor(),
+                                                           convWorkspace->AlgorithmBackward,
+                                                           &convWorkspace->BackwardWorkspaceSize));
+                                                           
+   if (convWorkspace->BackwardWorkspaceSize) cudaMalloc(&convWorkspace->BackwardWorkspace, convWorkspace->BackwardWorkspaceSize*sizeof(AFloat));
+  
+   // Filter gradient
+   Tensor_t activationBackward ({params.batchSize, params.inputDepth, params.inputHeight, params.inputWidth}, MemoryLayout::RowMajor, 0, 0);
+
+   CUDNNCHECK(cudnnGetConvolutionBackwardFilterAlgorithm(cudnnHandle,
+                                                         activationBackward.GetTensorDescriptor(),
+                                                         activationGradients.GetTensorDescriptor(),
+                                                         convDescriptors->LayerDescriptor,
+                                                         convDescriptors->WeightsDescriptor,
+                                                         CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST,
+                                                         0,
+                                                         &convWorkspace->HelperAlgorithm));
+                                                          
+   CUDNNCHECK(cudnnGetConvolutionBackwardFilterWorkspaceSize(cudnnHandle,
+                                                             activationBackward.GetTensorDescriptor(),
+                                                             activationGradients.GetTensorDescriptor(),
+                                                             convDescriptors->LayerDescriptor,
+                                                             convDescriptors->WeightsDescriptor,
+                                                             convWorkspace->HelperAlgorithm,
+                                                             &convWorkspace->HelperWorkspaceSize));
+                                                              
+    if (convWorkspace->HelperWorkspaceSize) cudaMalloc(&convWorkspace->HelperWorkspace, convWorkspace->HelperWorkspaceSize*sizeof(AFloat));
+   
+   workspace = convWorkspace;
+}
+
+//____________________________________________________________________________
+template <typename AFloat>
+void TCudnn<AFloat>::FreeConvWorkspace(TWorkspace * workspace, ConvLayer_t *L) {
+   if (!workspace) return;
+   auto convWorkspace = static_cast<ConvWorkspace_t *>(workspace);
+
+   if(convWorkspace->ForwardWorkspace)  cudaFree(convWorkspace->ForwardWorkspace);
+   if(convWorkspace->BackwardWorkspace) cudaFree(convWorkspace->BackwardWorkspace);
+   if(convWorkspace->HelperWorkspace)   cudaFree(convWorkspace->HelperWorkspace);
 }
 
 //____________________________________________________________________________

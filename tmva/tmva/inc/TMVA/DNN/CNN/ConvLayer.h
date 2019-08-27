@@ -41,9 +41,7 @@ namespace TMVA {
 namespace DNN {
 namespace CNN {
 
-//struct TDescriptor;
-
-typedef struct TConvParams : TParams {
+typedef struct TConvParams {
 
 public:
    size_t batchSize; ///< Batch size used for training and evaluation
@@ -84,6 +82,13 @@ public:
    using WeightsDescriptor_t = typename Architecture_t::FilterDescriptor_t;
    using HelperDescriptor_t  = typename Architecture_t::ActivationDescriptor_t;
 
+   using AlgorithmForward_t  = typename Architecture_t::AlgorithmForward_t;  // Forward layer operation
+   using AlgorithmBackward_t = typename Architecture_t::AlgorithmBackward_t; // Backward layer operation
+   using AlgorithmHelper_t   = typename Architecture_t::AlgorithmHelper_t;   // Used for weight grad backward pass
+
+   // FIXME: Add other cudnn types (algorithm preference etc.)
+   using AlgorithmDataType_t = typename Architecture_t::AlgorithmDataType_t;
+
    /* Calculate the output dimension of the convolutional layer */
    static size_t calculateDimension(size_t imgDim, size_t fltDim, size_t padding, size_t stride);
 
@@ -109,14 +114,15 @@ protected:
    
    TDescriptors * fDescriptors = nullptr;  ///< Keeps the convolution, activations and filter descriptors
   
-   void * fCudnnConvFwdWorkspace;  
+   TWorkspace * fWorkspace = nullptr;
+   /*void * fCudnnConvFwdWorkspace;  
    void * fCudnnConvBwdWorkspace; 
-   void * fCudnnFilterBwdWorkspace;  ///< On device memory needed for cudnn convolution operation backward
+   void * fCudnnFilterBwdWorkspace;*/  ///< On device memory needed for cudnn convolution operation backward
   
    void InitializeDescriptors();
    void ReleaseDescriptors();
-   void AllocateWorkspace();
-   void FreeWorkspace(void * workSpaces);///< Releases the on device workspace used by cudnn functions (cannot include cuda here)
+   void InitializeWorkspace();
+   void FreeWorkspace();               ///< Releases the on device workspace used by cudnn functions (cannot include cuda here)
 private:
    size_t fPaddingHeight;        ///< The number of zero layers added top and bottom of the input.
    size_t fPaddingWidth;         ///< The number of zero layers left and right of the input.
@@ -202,8 +208,8 @@ public:
    TDescriptors * GetDescriptors() {return fDescriptors;}
    const TDescriptors * GetDescriptors() const {return fDescriptors;}
 
-   void * GetForwardWorkspace() {return fCudnnConvFwdWorkspace;}
-   const void * GetForwardWorkspace() const {return fCudnnConvFwdWorkspace;}
+   TWorkspace * GetWorkspace() {return fWorkspace;}
+   const TWorkspace * GetWorkspace() const {return fWorkspace;}
 };
 
 
@@ -232,8 +238,8 @@ TConvLayer<Architecture_t>::TConvLayer(size_t batchSize, size_t inputDepth, size
      fDropoutProbability(dropoutProbability), fPaddingHeight(paddingHeight), fPaddingWidth(paddingWidth),
      fInputActivation(), fF(f), fReg(reg), fWeightDecay(weightDecay)
 {  
-   InitializeDescriptors();
-   //AllocateWorkspace();
+   InitializeDescriptors(); 
+   InitializeWorkspace();
    /** Each element in the vector is a `T_Matrix` representing an event, therefore `vec.size() == batchSize`.
     *  Cells in these matrices are distributed in the following manner:
     *  Each row represents a single feature map, therefore we have `nRows == depth`.
@@ -269,7 +275,7 @@ TConvLayer<Architecture_t>::TConvLayer(TConvLayer<Architecture_t> *layer)
      fForwardTensor( layer->GetForwardMatrices().GetShape() )
 {
    InitializeDescriptors();
-   AllocateWorkspace();
+   InitializeWorkspace();
    // size_t outputNSlices = (layer->GetInputActivation()).size();
    // size_t outputNRows = 0;
    // size_t outputNCols = 0;
@@ -296,7 +302,8 @@ TConvLayer<Architecture_t>::TConvLayer(const TConvLayer &convLayer)
       fForwardTensor( convLayer.GetForwardMatrices().GetShape() )
 {
    InitializeDescriptors();
-   AllocateWorkspace();
+   InitializeWorkspace();
+   //AllocateWorkspace();
    // size_t outputNSlices = convLayer.fInputActivation.size();
    // size_t outputNRows = convLayer.GetInputActivationAt(0).GetNrows();
    // size_t outputNCols = convLayer.GetInputActivationAt(0).GetNcols();
@@ -316,10 +323,15 @@ TConvLayer<Architecture_t>::~TConvLayer()
       ReleaseDescriptors();
       delete fDescriptors;
    }
+
+   if (fWorkspace) {
+      FreeWorkspace();
+      delete fWorkspace;
+   }
     
-   if (fCudnnConvFwdWorkspace)   FreeWorkspace(fCudnnConvFwdWorkspace);
-   if (fCudnnConvBwdWorkspace)   FreeWorkspace(fCudnnConvBwdWorkspace);
-   if (fCudnnFilterBwdWorkspace) FreeWorkspace(fCudnnFilterBwdWorkspace);
+   /*if (fWorkspace && fWorkspace->ForwardWorkspace)  FreeWorkspace(fWorkspace->ForwardWorkspace);
+   if (fWorkspace && fWorkspace->BackwardWorkspace) FreeWorkspace(fWorkspace->BackwardWorkspace);
+   if (fWorkspace && fWorkspace->HelperWorkspace)   FreeWorkspace(fWorkspace->HelperWorkspace);*/
 }
 
 //______________________________________________________________________________
@@ -334,7 +346,7 @@ auto TConvLayer<Architecture_t>::Forward(Tensor_t &input, bool /*applyDropout*/)
    Architecture_t::ConvLayerForward(this->GetOutput(), this->GetInputActivation(), input, this->GetWeightsAt(0),
                                     this->GetBiasesAt(0), params, this->GetActivationFunction(),
                                     this->GetForwardMatrices(), (TCNNDescriptors<TConvLayer<Architecture_t>> &) (*fDescriptors),
-                                    fCudnnConvFwdWorkspace);
+                                    (TCNNWorkspace<TConvLayer<Architecture_t>> &) (*fWorkspace));
 
 #if 0
    // in printciple I could make the indices data member of the class
@@ -394,11 +406,11 @@ auto TConvLayer<Architecture_t>::Backward(Tensor_t &gradients_backward,
    Architecture_t::ConvLayerBackward(
       gradients_backward, this->GetWeightGradientsAt(0), this->GetBiasGradientsAt(0), this->GetInputActivation(),
       this->GetActivationGradients(), this->GetWeightsAt(0), activations_backward, this->GetOutput(),
-      this->GetActivationFunction(),
-      (TCNNDescriptors<TConvLayer<Architecture_t>> &) (*fDescriptors), this->GetBatchSize(),
-      this->GetInputHeight(), this->GetInputWidth(), this->GetDepth(), this->GetHeight(), this->GetWidth(),
-      this->GetFilterDepth(), this->GetFilterHeight(), this->GetFilterWidth(), this->GetNLocalViews(), 
-      this->GetActivationFunction(), fCudnnConvBwdWorkspace, fCudnnFilterBwdWorkspace);
+      (TCNNDescriptors<TConvLayer<Architecture_t>> &) (*fDescriptors),
+      (TCNNWorkspace<TConvLayer<Architecture_t>> &) (*fWorkspace),
+      this->GetBatchSize(), this->GetInputHeight(), this->GetInputWidth(), this->GetDepth(),
+      this->GetHeight(), this->GetWidth(), this->GetFilterDepth(), this->GetFilterHeight(), 
+      this->GetFilterWidth(), this->GetNLocalViews(), this->GetActivationFunction());
 
    addRegularizationGradients<Architecture_t>(this->GetWeightGradientsAt(0), this->GetWeightsAt(0),
                                               this->GetWeightDecay(), this->GetRegularization());
@@ -489,18 +501,23 @@ void TConvLayer<Architecture_t>::InitializeDescriptors() {
 
 template <typename Architecture_t>
 void TConvLayer<Architecture_t>::ReleaseDescriptors() {
-   Architecture_t::ReleaseCNNDescriptors(fDescriptors, this);
+   Architecture_t::ReleaseConvDescriptors(fDescriptors, this);
 }
 
 //______________________________________________________________________________
-/*template <typename Architecture_t>
-void TConvLayer<Architecture_t>::AllocateWorkspace() {
-   Architecture_t::ConvForwardWorkspace(fDescriptors, 0.0, this);
-}*/
+template <typename Architecture_t>
+void TConvLayer<Architecture_t>::InitializeWorkspace() {
+   TConvParams params(this->GetBatchSize(), this->GetInputDepth(), this->GetInputHeight(), this->GetInputWidth(),
+                      this->GetDepth(), this->GetFilterHeight(), this->GetFilterWidth(),
+                      this->GetStrideRows(), this->GetStrideCols(), this->GetPaddingHeight(), this->GetPaddingWidth());
+
+   Architecture_t::InitializeConvWorkspace(fWorkspace, fDescriptors, params, this);
+   //Architecture_t::InitializeConvBackwardWorkspace(fWorkspace, this);
+}
 
 template <typename Architecture_t>
-void TConvLayer<Architecture_t>::FreeWorkspace(void * workSpaces) {
-   Architecture_t::FreeWorkspace(workSpaces);
+void TConvLayer<Architecture_t>::FreeWorkspace() {
+   Architecture_t::FreeConvWorkspace(fWorkspace, this);
 }
 
 //______________________________________________________________________________

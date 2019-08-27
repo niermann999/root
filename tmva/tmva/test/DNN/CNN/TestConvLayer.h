@@ -284,11 +284,10 @@ bool testForward1_cudnn()
                                            0.0, AFunct, ERegularization::kNone, 0.0);
 
     auto& convDescriptors = static_cast<TMVA::DNN::TCudnn<Double_t>::ConvDescriptors_t &> (*convLayer.GetDescriptors());
-    void * workspace = nullptr;
+    auto& convWorkspace   = static_cast<TMVA::DNN::TCudnn<Double_t>::ConvWorkspace_t &> (*convLayer.GetWorkspace());
 
     TCudnn<Double_t>::ConvLayerForward(computedOutput, computedDerivatives, input, weightsTensor, biasesTensor, params,
-                                       AFunct, forwardMatrix, convDescriptors, workspace);
-    if (workspace) cudaFree(workspace);
+                                       AFunct, forwardMatrix, convDescriptors, convWorkspace);
                                       
    TCudaHostBuffer<Double_t> expectedOutput_buffer(numberFilters * height * width);                                  
    for (size_t i = 0; i < numberFilters; i++) {
@@ -447,9 +446,15 @@ bool testBackward1()
     Matrix_t computedBiasGradients(numberFilters, 1);
     
     TDescriptors * convDescriptors = nullptr;
+    TWorkspace   * convWorkspace   = nullptr;
+
+    TConvParams params(1, imgDepth, imgHeight, imgWidth,
+                       numberFilters, fltHeight, fltWidth,
+                       strideRows, strideCols, zeroPaddingHeight, zeroPaddingWidth);
     
     TConvLayer<Architecture> *layer = nullptr;
     Architecture::InitializeConvDescriptors(convDescriptors, 0.0, layer);
+    Architecture::InitializeConvWorkspace(convWorkspace, convDescriptors, params, layer);
 
     Tensor_t output = df;
 
@@ -457,6 +462,7 @@ bool testBackward1()
                                     df, activationGradients, weights, activationsBackward, output,
                                     EActivationFunction::kIdentity,
                                     (typename Architecture::ConvDescriptors_t &) * convDescriptors,
+                                    (typename Architecture::ConvWorkspace_t &) * convWorkspace,
                                     batchSize, imgHeight, imgWidth, numberFilters, height,
                                     width, imgDepth, fltHeight, fltWidth, nLocalViews);
 
@@ -630,14 +636,13 @@ bool testBackward1_cudnn()
                                             0.0, AFunct, ERegularization::kNone, 0.0);
 
     auto& convDescriptors = static_cast<TMVA::DNN::TCudnn<Double_t>::ConvDescriptors_t &> (*convLayer.GetDescriptors());
-    void * workspace = nullptr;
+    auto& convWorkspace = static_cast<TMVA::DNN::TCudnn<Double_t>::ConvWorkspace_t &> (*convLayer.GetWorkspace());
 
     TConvParams params(1, imgDepth, imgHeight, imgWidth, numberFilters, fltHeight, fltWidth, strideRows,
                       strideCols, zeroPaddingHeight, zeroPaddingWidth);
     Tensor_t dummy; 
     TCudnn<Double_t>::ConvLayerForward(computedOutput, computedInputActivFunc, input, weights, biasesTensor, params,
-                                       AFunct, dummy, convDescriptors, workspace);
-    if (workspace) cudaFree(workspace);
+                                       AFunct, dummy, convDescriptors, convWorkspace);
 
 
     // Backward pass
@@ -648,8 +653,8 @@ bool testBackward1_cudnn()
                                     computedBiasGradients,
                                     computedInputActivFunc , activationGradients, weights, input, computedOutput,
                                     EActivationFunction::kIdentity,  // this is not used in cudnn
-                                    convDescriptors, batchSize, imgHeight, imgWidth, numberFilters, height,
-                                    width, imgDepth, fltHeight, fltWidth, nLocalViews);
+                                    convDescriptors, convWorkspace, batchSize, imgHeight, imgWidth, numberFilters, height,
+                                      width, imgDepth, fltHeight, fltWidth, nLocalViews);
     // Check correctness.
     bool status = true;
 

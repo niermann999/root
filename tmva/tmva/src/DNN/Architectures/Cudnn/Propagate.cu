@@ -159,10 +159,11 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
                                       Tensor_t & inputActivation,
                                       const Tensor_t & input,
                                       const Matrix_t & weights, const Matrix_t & biases,
-                                      const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
+                                      const DNN::CNN::TConvParams & params, 
+                                      EActivationFunction activFunc,
                                       Tensor_t & inputPrime,
                                       const ConvDescriptors_t & descriptors,
-                                      void * cudnnWorkspace)
+                                      ConvWorkspace_t & workspace)
 //                                    const AFloat alpha,
 //                                    const AFloat beta)
 {
@@ -181,6 +182,7 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
    AFloat beta  = 0.0; 
    cudnnHandle_t cudnnHandle = input.GetCudnnHandle();
 
+<<<<<<< HEAD
 #if 0
    
    //FIXME: Move this to constructor
@@ -211,7 +213,7 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
                                               cudnnDataType));
    
    // cuDNN decides on which algorithm to use
-#endif
+
 
    // FIXME: Move everything except convolution to constructor
 
@@ -239,6 +241,9 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
                                                   
    if (workSpaceSizeInBytes) cudaMalloc(&cudnnWorkspace, workSpaceSizeInBytes*sizeof(AFloat));
    
+#endif
+/// >>>>>>> Workspace initialization is now done in the constructor.
+
    // Perform convolution
    CUDNNCHECK(cudnnConvolutionForward(cudnnHandle,
                                       &alpha,
@@ -247,9 +252,9 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
                                       descriptors.WeightsDescriptor,
                                       weights.GetDataPointer(),
                                       descriptors.LayerDescriptor,
-                                      algorithm,
-                                      cudnnWorkspace,
-                                      workSpaceSizeInBytes,
+                                      workspace.AlgorithmForward,
+                                      workspace.ForwardWorkspace,
+                                      workspace.ForwardWorkspaceSize,
                                       &beta,
                                       outputTensor.GetTensorDescriptor(),
                                       outputTensor.GetDataPointer()));
@@ -279,17 +284,13 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
                                        const Tensor_t &outputTensor,
                                        EActivationFunction activFunc,
                                        const ConvDescriptors_t & descriptors,
+                                       ConvWorkspace_t & workspace,
                                        size_t /*batchSize*/,   size_t /*inputHeight*/, 
                                        size_t /*inputWidth*/,  size_t /*depth*/, 
                                        size_t /*height*/,      size_t /*width*/, 
                                        size_t /*filterDepth*/, size_t /*filterHeight*/, 
-                                       size_t /*filterWidth*/, size_t /*nLocalViews*/,
-                                       EActivationFunction activFunct,
-                                       void * cudnnConvBwdWorkspaces, 
-                                       void * cudnnFilterBwdWorkspace)
+                                       size_t /*filterWidth*/, size_t /*nLocalViews*/)
 {
-
-
    activationGradients.Reshape( outputTensor.GetShape());
    weightGradients.Reshape( weights.GetShape());
    biasGradients.Reshape({ 1, outputTensor.GetShape()[1], 1, 1});   // second output dimension is number of filters
@@ -314,31 +315,8 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
    //--------------------------------------------------------------------------
    const AFloat alpha = 1.0;
    const AFloat beta  = 0.0;
-   size_t  workSpaceSizeInBytes = 0;
    
    cudnnHandle_t cudnnHandle = outputTensor.GetCudnnHandle();
-   cudnnConvolutionBwdDataAlgo_t backwardAlgorithm;
-   
-   // dx : Activation gradient to be computed                               -> activationGradients [in place op] 
-   // dy : Gradient of activation from the following layer (backpropagation)-> activationGradients
-   CUDNNCHECK(cudnnGetConvolutionBackwardDataAlgorithm(cudnnHandle,
-                                                       descriptors.WeightsDescriptor,
-                                                       activationGradients.GetTensorDescriptor(),
-                                                       descriptors.LayerDescriptor,
-                                                       activationGradientsBackward.GetTensorDescriptor(),
-                                                       CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST,
-                                                       0,
-                                                       &backwardAlgorithm));
-    
-   CUDNNCHECK(cudnnGetConvolutionBackwardDataWorkspaceSize(cudnnHandle,
-                                                           descriptors.WeightsDescriptor,
-                                                           activationGradients.GetTensorDescriptor(),
-                                                           descriptors.LayerDescriptor,
-                                                           activationGradientsBackward.GetTensorDescriptor(),
-                                                           backwardAlgorithm,
-                                                           &workSpaceSizeInBytes));
-                                                           
-   if (workSpaceSizeInBytes) cudaMalloc(&cudnnConvBwdWorkspaces, workSpaceSizeInBytes*sizeof(AFloat));
     
    CUDNNCHECK(cudnnConvolutionBackwardData(cudnnHandle,
                                            &alpha,
@@ -347,9 +325,9 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
                                            activationGradients.GetTensorDescriptor(),
                                            activationGradients.GetDataPointer(),
                                            descriptors.LayerDescriptor,
-                                           backwardAlgorithm,
-                                           cudnnConvBwdWorkspaces,
-                                           workSpaceSizeInBytes,
+                                           workspace.AlgorithmBackward,
+                                           workspace.BackwardWorkspace,
+                                           workspace.BackwardWorkspaceSize,
                                            &beta,
                                            activationGradientsBackward.GetTensorDescriptor(),
                                            activationGradientsBackward.GetDataPointer()));
@@ -357,26 +335,6 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
     //--------------------------------------------------------------------------
     // Filter gradient
     //--------------------------------------------------------------------------
-    
-    cudnnConvolutionBwdFilterAlgo_t backwardFilterAlgorithm;
-    CUDNNCHECK(cudnnGetConvolutionBackwardFilterAlgorithm(cudnnHandle,
-                                                          activationBackward.GetTensorDescriptor(),
-                                                          activationGradients.GetTensorDescriptor(),
-                                                          descriptors.LayerDescriptor,
-                                                          descriptors.WeightsDescriptor,
-                                                          CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST,
-                                                          0,
-                                                          &backwardFilterAlgorithm));
-                                                          
-    CUDNNCHECK(cudnnGetConvolutionBackwardFilterWorkspaceSize(cudnnHandle,
-                                                              activationBackward.GetTensorDescriptor(),
-                                                              activationGradients.GetTensorDescriptor(),
-                                                              descriptors.LayerDescriptor,
-                                                              descriptors.WeightsDescriptor,
-                                                              backwardFilterAlgorithm,
-                                                              &workSpaceSizeInBytes));
-                                                              
-    if (workSpaceSizeInBytes) cudaMalloc(&cudnnFilterBwdWorkspace, workSpaceSizeInBytes*sizeof(AFloat));
 
     CUDNNCHECK(cudnnConvolutionBackwardFilter(cudnnHandle,
                                               &alpha,
@@ -385,9 +343,9 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
                                               activationGradients.GetTensorDescriptor(),
                                               activationGradients.GetDataPointer(),
                                               descriptors.LayerDescriptor,
-                                              backwardFilterAlgorithm,
-                                              cudnnFilterBwdWorkspace,
-                                              workSpaceSizeInBytes,
+                                              workspace.HelperAlgorithm,
+                                              workspace.HelperWorkspace,
+                                              workspace.HelperWorkspaceSize,
                                               &beta,
                                               descriptors.WeightsDescriptor,
                                               weightGradients.GetDataPointer()));
@@ -396,7 +354,6 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
     //--------------------------------------------------------------------------
     // Bias gradient
     //--------------------------------------------------------------------------
-    
     
     CUDNNCHECK(cudnnConvolutionBackwardBias(cudnnHandle,
                                             &alpha,
