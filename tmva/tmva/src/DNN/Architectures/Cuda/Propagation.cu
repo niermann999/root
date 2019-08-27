@@ -239,7 +239,7 @@ void TCuda<AFloat>::ConvLayerForward(TCudaTensor<AFloat> & output,
                                      const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
                                      TCudaTensor<AFloat> & inputPrime,
                                      const ConvDescriptors_t & /*descriptors*/,
-                                     void * /*cudnnWorkspace*/)
+                                     ConvWorkspace_t & /*workspace*/)
 {
    size_t height = calculateDimension(params.inputHeight, params.filterHeight, params.paddingHeight, params.strideRows);
    size_t width = calculateDimension(params.inputWidth, params.filterWidth, params.paddingWidth, params.strideCols);
@@ -277,6 +277,7 @@ void TCuda<AFloat>::ConvLayerBackward(TCudaTensor<AFloat> & activationGradientsB
                                       const TCudaTensor<AFloat> & activationBackward,
                                       const Tensor_t & /*outputTensor*/,
                                       const ConvDescriptors_t & /*descriptors*/,
+                                      ConvWorkspace_t & /*workspace*/,
                                       size_t batchSize,
                                       size_t inputHeight,
                                       size_t inputWidth,
@@ -287,9 +288,7 @@ void TCuda<AFloat>::ConvLayerBackward(TCudaTensor<AFloat> & activationGradientsB
                                       size_t filterHeight,
                                       size_t filterWidth,
                                       size_t nLocalViews,
-                                      EActivationFunction /*activFunct*/,
-                                      void * /*cudnnConvBwdWorkspaces*/, 
-                                      void * /*cudnnFilterBwdWorkspace*/)
+                                      EActivationFunction /*activFunct*/)
 {
     
    // Compute element-wise product.

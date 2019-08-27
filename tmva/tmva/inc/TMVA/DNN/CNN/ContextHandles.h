@@ -18,12 +18,14 @@
 #ifndef TMVA_DNN_CNN_DESCRIPTORS
 #define TMVA_DNN_CNN_DESCRIPTORS
 
+#include <stddef.h>
+
 namespace TMVA
 {
 namespace DNN
 { 
    struct TDescriptors {};
-   struct TParams {};
+   struct TWorkspace {};
 namespace CNN
 {
 
@@ -41,6 +43,30 @@ struct TCNNDescriptors : public TMVA::DNN::TDescriptors {
    LayerDescriptor_t   LayerDescriptor;
    HelperDescriptor_t  HelperDescriptor;
    WeightsDescriptor_t WeightsDescriptor;
+};
+
+template<typename Layer_t>
+struct TCNNWorkspace : public TMVA::DNN::TWorkspace {
+   using AlgorithmForward_t  = typename Layer_t::AlgorithmForward_t;  // Forward layer operation
+   using AlgorithmBackward_t = typename Layer_t::AlgorithmBackward_t; // Backward layer operation
+   using AlgorithmHelper_t   = typename Layer_t::AlgorithmHelper_t;   // Used for weight grad backward pass
+
+   // FIXME: Add other cudnn types (algorithm preference etc.)
+   using AlgorithmDataType_t = typename Layer_t::AlgorithmDataType_t;
+
+   AlgorithmForward_t  AlgorithmForward;
+   AlgorithmBackward_t AlgorithmBackward;
+   AlgorithmHelper_t   HelperAlgorithm;
+
+   AlgorithmDataType_t DataType;
+
+   void * ForwardWorkspace;
+   void * BackwardWorkspace;
+   void * HelperWorkspace;
+
+   size_t ForwardWorkspaceSize;
+   size_t BackwardWorkspaceSize;
+   size_t HelperWorkspaceSize;
 };
 
 } // namespace CNN
