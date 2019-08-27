@@ -41,7 +41,37 @@ namespace TMVA {
 namespace DNN {
 namespace CNN {
 
-struct TDescriptor;
+//struct TDescriptor;
+
+typedef struct TConvParams : TParams {
+
+public:
+   size_t batchSize; ///< Batch size used for training and evaluation
+
+   size_t inputDepth;  ///< The depth of the previous layer or input.
+   size_t inputHeight; ///< The height of the previous layer or input.
+   size_t inputWidth;  ///< The width of the previous layer or input.
+
+   size_t numberFilters; ///< The number of the filters, which is equal to the output's depth.
+   size_t filterHeight;  ///< The height of the filter.
+   size_t filterWidth;   ///< The width of the filter.
+
+   size_t strideRows;    ///< The number of row pixels to slid the filter each step.
+   size_t strideCols;    ///< The number of column pixels to slid the filter each step.
+   size_t paddingHeight; ///< The number of zero layers added top and bottom of the input.
+   size_t paddingWidth;  ///< The number of zero layers left and right of the input.
+
+   TConvParams(size_t _batchSize, size_t _inputDepth, size_t _inputHeight, size_t _inputWidth, size_t _numberFilters,
+               size_t _filterHeight, size_t _filterWidth, size_t _strideRows, size_t _strideCols,
+               size_t _paddingHeight, size_t _paddingWidth)
+           : batchSize(_batchSize), inputDepth(_inputDepth), inputHeight(_inputHeight), inputWidth(_inputWidth),
+             numberFilters(_numberFilters), filterHeight(_filterHeight), filterWidth(_filterWidth),
+             strideRows(_strideRows), strideCols(_strideCols), paddingHeight(_paddingHeight),
+             paddingWidth(_paddingWidth)
+   {}
+} TConvParams;
+
+
 
 template <typename Architecture_t>
 class TConvLayer : public VGeneralLayer<Architecture_t> {
@@ -78,12 +108,14 @@ protected:
    Scalar_t fDropoutProbability; ///< Probability that an input is active.
    
    TDescriptors * fDescriptors = nullptr;  ///< Keeps the convolution, activations and filter descriptors
-   void InitializeDescriptors();
-   void ReleaseDescriptors();
   
    void * fCudnnConvFwdWorkspace;  
    void * fCudnnConvBwdWorkspace; 
    void * fCudnnFilterBwdWorkspace;  ///< On device memory needed for cudnn convolution operation backward
+  
+   void InitializeDescriptors();
+   void ReleaseDescriptors();
+   void AllocateWorkspace();
    void FreeWorkspace(void * workSpaces);///< Releases the on device workspace used by cudnn functions (cannot include cuda here)
 private:
    size_t fPaddingHeight;        ///< The number of zero layers added top and bottom of the input.
@@ -165,35 +197,14 @@ public:
    EActivationFunction GetActivationFunction() const { return fF; }
    ERegularization GetRegularization() const { return fReg; }
    Scalar_t GetWeightDecay() const { return fWeightDecay; }
+
+   // The following getters are used for testing
+   TDescriptors * GetDescriptors() {return fDescriptors;}
+   const TDescriptors * GetDescriptors() const {return fDescriptors;}
+
+   void * GetForwardWorkspace() {return fCudnnConvFwdWorkspace;}
+   const void * GetForwardWorkspace() const {return fCudnnConvFwdWorkspace;}
 };
-
-typedef struct TConvParams {
-
-public:
-   size_t batchSize; ///< Batch size used for training and evaluation
-
-   size_t inputDepth;  ///< The depth of the previous layer or input.
-   size_t inputHeight; ///< The height of the previous layer or input.
-   size_t inputWidth;  ///< The width of the previous layer or input.
-
-   size_t numberFilters; ///< The number of the filters, which is equal to the output's depth.
-   size_t filterHeight;  ///< The height of the filter.
-   size_t filterWidth;   ///< The width of the filter.
-
-   size_t strideRows;    ///< The number of row pixels to slid the filter each step.
-   size_t strideCols;    ///< The number of column pixels to slid the filter each step.
-   size_t paddingHeight; ///< The number of zero layers added top and bottom of the input.
-   size_t paddingWidth;  ///< The number of zero layers left and right of the input.
-
-   TConvParams(size_t _batchSize, size_t _inputDepth, size_t _inputHeight, size_t _inputWidth, size_t _numberFilters,
-               size_t _filterHeight, size_t _filterWidth, size_t _strideRows, size_t _strideCols,
-               size_t _paddingHeight, size_t _paddingWidth)
-           : batchSize(_batchSize), inputDepth(_inputDepth), inputHeight(_inputHeight), inputWidth(_inputWidth),
-             numberFilters(_numberFilters), filterHeight(_filterHeight), filterWidth(_filterWidth),
-             strideRows(_strideRows), strideCols(_strideCols), paddingHeight(_paddingHeight),
-             paddingWidth(_paddingWidth)
-   {}
-} TConvParams;
 
 
 //
@@ -222,6 +233,7 @@ TConvLayer<Architecture_t>::TConvLayer(size_t batchSize, size_t inputDepth, size
      fInputActivation(), fF(f), fReg(reg), fWeightDecay(weightDecay)
 {  
    InitializeDescriptors();
+   //AllocateWorkspace();
    /** Each element in the vector is a `T_Matrix` representing an event, therefore `vec.size() == batchSize`.
     *  Cells in these matrices are distributed in the following manner:
     *  Each row represents a single feature map, therefore we have `nRows == depth`.
@@ -257,6 +269,7 @@ TConvLayer<Architecture_t>::TConvLayer(TConvLayer<Architecture_t> *layer)
      fForwardTensor( layer->GetForwardMatrices().GetShape() )
 {
    InitializeDescriptors();
+   AllocateWorkspace();
    // size_t outputNSlices = (layer->GetInputActivation()).size();
    // size_t outputNRows = 0;
    // size_t outputNCols = 0;
@@ -283,6 +296,7 @@ TConvLayer<Architecture_t>::TConvLayer(const TConvLayer &convLayer)
       fForwardTensor( convLayer.GetForwardMatrices().GetShape() )
 {
    InitializeDescriptors();
+   AllocateWorkspace();
    // size_t outputNSlices = convLayer.fInputActivation.size();
    // size_t outputNRows = convLayer.GetInputActivationAt(0).GetNrows();
    // size_t outputNCols = convLayer.GetInputActivationAt(0).GetNcols();
@@ -384,7 +398,7 @@ auto TConvLayer<Architecture_t>::Backward(Tensor_t &gradients_backward,
       (TCNNDescriptors<TConvLayer<Architecture_t>> &) (*fDescriptors), this->GetBatchSize(),
       this->GetInputHeight(), this->GetInputWidth(), this->GetDepth(), this->GetHeight(), this->GetWidth(),
       this->GetFilterDepth(), this->GetFilterHeight(), this->GetFilterWidth(), this->GetNLocalViews(), 
-      fCudnnConvBwdWorkspace, fCudnnFilterBwdWorkspace);
+      this->GetActivationFunction(), fCudnnConvBwdWorkspace, fCudnnFilterBwdWorkspace);
 
    addRegularizationGradients<Architecture_t>(this->GetWeightGradientsAt(0), this->GetWeightsAt(0),
                                               this->GetWeightDecay(), this->GetRegularization());
@@ -470,7 +484,7 @@ size_t TConvLayer<Architecture_t>::calculateNLocalViews(size_t inputHeight, size
 //______________________________________________________________________________
 template <typename Architecture_t>
 void TConvLayer<Architecture_t>::InitializeDescriptors() {
-   Architecture_t::InitializeCNNDescriptors(fDescriptors, this);
+   Architecture_t::InitializeConvDescriptors(fDescriptors, 0.0, this);
 }
 
 template <typename Architecture_t>
@@ -479,6 +493,11 @@ void TConvLayer<Architecture_t>::ReleaseDescriptors() {
 }
 
 //______________________________________________________________________________
+/*template <typename Architecture_t>
+void TConvLayer<Architecture_t>::AllocateWorkspace() {
+   Architecture_t::ConvForwardWorkspace(fDescriptors, 0.0, this);
+}*/
+
 template <typename Architecture_t>
 void TConvLayer<Architecture_t>::FreeWorkspace(void * workSpaces) {
    Architecture_t::FreeWorkspace(workSpaces);

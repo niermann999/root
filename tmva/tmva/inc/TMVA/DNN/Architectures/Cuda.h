@@ -22,6 +22,7 @@
 #include "TMVA/DNN/CNN/ContextHandles.h"
 //#include "TMVA/DNN/CNN/Descriptors.h"
 #include "TMVA/DNN/CNN/ConvLayer.h"
+#include "TMVA/DNN/CNN/MaxPoolLayer.h"
 
 
 #include "cuda.h"
@@ -59,25 +60,28 @@ private:
    static TRandom * fgRandomGen;
 public:
 
-    using AFloat         = AReal;
-    using Scalar_t       = AFloat;
+   using AFloat         = AReal;
+   using Scalar_t       = AFloat;
  
-    using Matrix_t       = TCudaMatrix<AFloat>;
-    using Tensor_t       = TCudaTensor<AFloat>;
-    using DeviceBuffer_t = TCudaDeviceBuffer<AFloat>;
-    using HostBuffer_t   = TCudaHostBuffer<AFloat>;
+   using Matrix_t       = TCudaMatrix<AFloat>;
+   using Tensor_t       = TCudaTensor<AFloat>;
+   using DeviceBuffer_t = TCudaDeviceBuffer<AFloat>;
+   using HostBuffer_t   = TCudaHostBuffer<AFloat>;
 
-    using ActivationDescriptor_t  = CudaActivationDescriptor;
-    using ConvolutionDescriptor_t = CudaConvolutionDescriptor;
-    using FilterDescriptor_t      = CudaFilterDescriptor;
-    /*using DropoutDescriptor_t     = CudaDropoutDescriptor;
-    using OpTensorDescriptor_t    = CudaOpTensorDescriptor;*/
-    using PoolingDescriptor_t     = CudaPoolingDescriptor;
-    //using ReductionDescriptor_t   = CudaReduceTensorDescriptor;
+   using ActivationDescriptor_t  = CudaActivationDescriptor;
+   using ConvolutionDescriptor_t = CudaConvolutionDescriptor;
+   using FilterDescriptor_t      = CudaFilterDescriptor;
+   /*using DropoutDescriptor_t     = CudaDropoutDescriptor;
+   using OpTensorDescriptor_t    = CudaOpTensorDescriptor;*/
+   using PoolingDescriptor_t     = CudaPoolingDescriptor;
+   //using ReductionDescriptor_t   = CudaReduceTensorDescriptor;
 
-    using EmptyDescriptor_t       = CudaEmptyDescriptor;        // Used if a descriptor is not needed in a class
+   using EmptyDescriptor_t       = CudaEmptyDescriptor;        // Used if a descriptor is not needed in a class
     
-    using ConvDescriptors_t       =  CNN::TCNNDescriptors<CNN::TConvLayer<TCuda<AReal>>>;
+   using ConvLayer_t             = CNN::TConvLayer<TCuda<AReal>>;
+   using ConvDescriptors_t       = CNN::TCNNDescriptors<ConvLayer_t>;
+   using PoolingLayer_t          = CNN::TMaxPoolLayer<TCuda<AReal>>;
+   using PoolingDescriptors_t    = CNN::TCNNDescriptors<PoolingLayer_t>;
 
 #if 0 // old definitions
 
@@ -570,12 +574,15 @@ public:
    //____________________________________________________________________________
 
    /** Initialize CNN data/operator descriptors. Not used at the moment.*/
-   template<typename Layer_t>
-   static void InitializeCNNDescriptors(CNN::TDescriptors *& /*descriptors*/, Layer_t */*L = nullptr*/) {}
-   
+   static void InitializeConvDescriptors(TDescriptors * & /*descriptors*/, double /*coef = 0.0*/, 
+                                         ConvLayer_t */*L = nullptr*/) {}
+
+   static void InitializePoolingDescriptors(TDescriptors * & /*descriptors*/, double /*coef = 0.0*/, 
+                                            PoolingLayer_t */*L = nullptr*/) {}
+
    /** Release CNN data/operator descriptors. Not used at the moment.*/
    template<typename Layer_t>
-   static void ReleaseCNNDescriptors(CNN::TDescriptors * & /*descriptors*/, Layer_t */*L = nullptr*/) {}
+   static void ReleaseCNNDescriptors(TDescriptors * & /*descriptors*/, Layer_t */*L = nullptr*/) {}
    
    static void FreeWorkspace(void * /*workspace*/) {}   ///< Only used for certain cudnn on-device memory
    
@@ -927,6 +934,7 @@ public:
                                  size_t height,      size_t width,
                                  size_t filterDepth, size_t filterHeight, 
                                  size_t filterWidth, size_t nLocalViews,
+                                 EActivationFunction activFunct = EActivationFunction::kIdentity,
                                  void * cudnnConvBwdWorkspaces = nullptr, 
                                  void * cudnnFilterBwdWorkspace = nullptr);
 

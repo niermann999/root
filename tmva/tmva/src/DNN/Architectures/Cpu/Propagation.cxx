@@ -426,6 +426,7 @@ void TCpu<AFloat>::ConvLayerBackward(TCpuTensor<AFloat> &activationGradientsBack
                                      size_t height,      size_t width,
                                      size_t filterDepth, size_t filterHeight, 
                                      size_t filterWidth, size_t nLocalViews,
+                                     EActivationFunction /*activFunct*/,
                                      void * /*cudnnConvBwdWorkspaces*/, 
                                      void * /*cudnnFilterBwdWorkspace*/)
 {

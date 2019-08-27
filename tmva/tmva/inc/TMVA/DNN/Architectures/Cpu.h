@@ -22,6 +22,7 @@
 #include "TMVA/DNN/CNN/ContextHandles.h"
 //#include "TMVA/DNN/CNN/Descriptors.h"
 #include "TMVA/DNN/CNN/ConvLayer.h"
+#include "TMVA/DNN/CNN/MaxPoolLayer.h"
 
 #include "Cpu/CpuBuffer.h"
 #include "Cpu/CpuMatrix.h"
@@ -39,7 +40,7 @@ namespace DNN
  struct DummyConvolutionDescriptor {};
  struct DummyPoolingDescriptor {};
  
- struct DummyEmptyDescriptor {}; 
+ struct DummyEmptyDescriptor {};
 
 /** The TCpu architecture class.
  *
@@ -71,20 +72,25 @@ public:
    
    using EmptyDescriptor_t       = DummyEmptyDescriptor;        // Used if a descriptor is not needed in a class
    
-   using ConvDescriptors_t       =  CNN::TCNNDescriptors<CNN::TConvLayer<TCpu<AReal>>>;
-
+   using ConvLayer_t             = CNN::TConvLayer<TCpu<AReal>>;
+   using ConvDescriptors_t       = CNN::TCNNDescriptors<ConvLayer_t>;
+   using PoolingLayer_t          = CNN::TMaxPoolLayer<TCpu<AReal>>;
+   using PoolingDescriptors_t    = CNN::TCNNDescriptors<PoolingLayer_t>;
    //____________________________________________________________________________
    //
    // Architecture Initialization
    //____________________________________________________________________________
    
    /** Initialize CNN data/operator descriptors. Not used at the moment.*/
-   template<typename Layer_t>
-   static void InitializeCNNDescriptors(CNN::TDescriptors *& /*descriptors*/, Layer_t */*L = nullptr*/) {}
-   
+   static void InitializeConvDescriptors(TDescriptors * & /*descriptors*/, double /*coef = 0.0*/, 
+                                         ConvLayer_t */*L = nullptr*/) {}
+
+   static void InitializePoolingDescriptors(TDescriptors * & /*descriptors*/, double /*coef = 0.0*/, 
+                                            PoolingLayer_t */*L = nullptr*/) {}
+
    /** Release CNN data/operator descriptors. Not used at the moment.*/
    template<typename Layer_t>
-   static void ReleaseCNNDescriptors(CNN::TDescriptors * & /*descriptors*/, Layer_t */*L = nullptr*/) {}
+   static void ReleaseCNNDescriptors(TDescriptors * & /*descriptors*/, Layer_t */*L = nullptr*/) {}
    
    static void FreeWorkspace(void * /*workspace*/) {}   ///< Only used for certain cudnn on-device memory
    
@@ -442,6 +448,7 @@ public:
                                  size_t height,      size_t width,
                                  size_t filterDepth, size_t filterHeight, 
                                  size_t filterWidth, size_t nLocalViews,
+                                 EActivationFunction activFunct = EActivationFunction::kIdentity,
                                  void * cudnnConvBwdWorkspaces = nullptr, 
                                  void * cudnnFilterBwdWorkspace = nullptr);
 

@@ -293,6 +293,7 @@ void TCuda<AFloat>::ConvLayerBackward(TCudaTensor<AFloat> & activationGradientsB
                                       size_t filterHeight,
                                       size_t filterWidth,
                                       size_t nLocalViews,
+                                      EActivationFunction /*activFunct*/,
                                       void * /*cudnnConvBwdWorkspaces*/, 
                                       void * /*cudnnFilterBwdWorkspace*/)
 {
