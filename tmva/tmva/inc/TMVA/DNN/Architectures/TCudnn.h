@@ -22,6 +22,7 @@
 #include "TMVA/DNN/CNN/ContextHandles.h"
 //#include "TMVA/DNN/CNN/Descriptors.h"
 #include "TMVA/DNN/CNN/ConvLayer.h"
+#include "TMVA/DNN/CNN/MaxPoolLayer.h"
 
 #include "cudnn.h"
 #include "Cuda/CudaBuffers.h"
@@ -53,42 +54,41 @@ private:
    static TRandom * fgRandomGen;
 public:
 
-    using Scalar_t       = AFloat;
-    using Matrix_t       = TCudaTensor<AFloat>;
-    using Tensor_t       = TCudaTensor<AFloat>;
-    using DeviceBuffer_t = TCudaDeviceBuffer<AFloat>;
-    using HostBuffer_t   = TCudaHostBuffer<AFloat>;
+   using Scalar_t       = AFloat;
+   using Matrix_t       = TCudaTensor<AFloat>;
+   using Tensor_t       = TCudaTensor<AFloat>;
+   using DeviceBuffer_t = TCudaDeviceBuffer<AFloat>;
+   using HostBuffer_t   = TCudaHostBuffer<AFloat>;
     
-    // The descriptors for the (tensor) data are held by the data classes (CudaTensor)
-    using ActivationDescriptor_t  = cudnnActivationDescriptor_t;
-    using ConvolutionDescriptor_t = cudnnConvolutionDescriptor_t;
-    using DropoutDescriptor_t     = cudnnDropoutDescriptor_t;
-    using FilterDescriptor_t      = cudnnFilterDescriptor_t;
-    using OpTensorDescriptor_t    = cudnnOpTensorDescriptor_t;
-    using PoolingDescriptor_t     = cudnnPoolingDescriptor_t;
-    using ReductionDescriptor_t   = cudnnReduceTensorDescriptor_t;
+   // The descriptors for the (tensor) data are held by the data classes (CudaTensor)
+   using ActivationDescriptor_t  = cudnnActivationDescriptor_t;
+   using ConvolutionDescriptor_t = cudnnConvolutionDescriptor_t;
+   using DropoutDescriptor_t     = cudnnDropoutDescriptor_t;
+   using FilterDescriptor_t      = cudnnFilterDescriptor_t;
+   using OpTensorDescriptor_t    = cudnnOpTensorDescriptor_t;
+   using PoolingDescriptor_t     = cudnnPoolingDescriptor_t;
+   using ReductionDescriptor_t   = cudnnReduceTensorDescriptor_t;
     
-    using EmptyDescriptor_t       = TCudnnEmptyDescriptor;        // Used if a descriptor is not needed in a class
+   using EmptyDescriptor_t       = TCudnnEmptyDescriptor;        // Used if a descriptor is not needed in a class
     
-    //template<typename AFloat>
-    using ConvDescriptors_t       =  CNN::TCNNDescriptors<CNN::TConvLayer<TCudnn<AFloat>>>;
+   using ConvLayer_t             = CNN::TConvLayer<TCudnn<AFloat>>;
+   using ConvDescriptors_t       = CNN::TCNNDescriptors<ConvLayer_t>;
+   using PoolingLayer_t          = CNN::TMaxPoolLayer<TCudnn<AFloat>>;
+   using PoolingDescriptors_t    = CNN::TCNNDescriptors<PoolingLayer_t>;
 
    //____________________________________________________________________________
    //
    // Architecture Initialization
    //____________________________________________________________________________
 
+   static void InitializeConvDescriptors(TDescriptors * & descriptors, double coef = 0.0, 
+                                         ConvLayer_t *L = nullptr);
+
+   static void InitializePoolingDescriptors(TDescriptors * & descriptors, double coef = 0.0, 
+                                            PoolingLayer_t *L = nullptr);
+
    template<typename Layer_t>
-   static void InitializeCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L = nullptr);
-   
-   static void InitializeDescriptor(EmptyDescriptor_t &       emptyDescr) {}      // Does nothing
-   static void InitializeDescriptor(ActivationDescriptor_t &  activationDescr);
-   static void InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr);
-   static void InitializeDescriptor(FilterDescriptor_t &      filterDescr);
-   static void InitializeDescriptor(PoolingDescriptor_t &     poolingDescr);
-   
-   template<typename Layer_t>
-   static void ReleaseCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L = nullptr);
+   static void ReleaseCNNDescriptors(TDescriptors * descriptors, Layer_t *L = nullptr);
    
    static void ReleaseDescriptor(EmptyDescriptor_t &       emptyDescr) {}        // Does nothing
    static void ReleaseDescriptor(ActivationDescriptor_t &  activationDescr);
@@ -107,12 +107,6 @@ public:
     * through the network.
     */
       ///@{
-   /** Matrix-multiply \p input with the transpose of \pweights and
-    *  write the results into \p output. */
-   //static void MultiplyTranspose(Tensor_t &output, const Matrix_t &input, const Matrix_t &weights);
-
-   /** Add the vectors biases row-wise to the matrix output */
-   //static void AddRowWise(Tensor_t &output,const Matrix_t &biases);
 
    /** @name Backward Propagation (Dense Layers)
     * Low-level functions required for the forward propagation of activations
@@ -175,48 +169,52 @@ public:
    /** Computes the gradient of the activation function */
    static void ActivationFunctionBackward(const Tensor_t & Y, const Tensor_t & dY, 
                                           const Tensor_t & X, Tensor_t & dX,
+                                          EActivationFunction activFunct,
                                           const ActivationDescriptor_t activationDescr,
                                           const AFloat alpha = 1, 
                                           const AFloat beta = 0);
                     
    static void Relu(Tensor_t & X, ActivationDescriptor_t activationDescr, 
                     const double coef = 0.0, const AFloat alpha = 1, 
-                    const AFloat beta = 1);          
+                    const AFloat beta = 1) {}          
    static void ReluDerivative(const Tensor_t & Y, const Tensor_t & dY, 
                               const Tensor_t & X, Tensor_t & dX,
                               const ActivationDescriptor_t activationDescr, 
                               const AFloat alpha = 1, 
-                              const AFloat beta = 1);
+                              const AFloat beta = 1) {}
 
    static void Sigmoid(Tensor_t & X, ActivationDescriptor_t activationDescr,
                        const double coef = 0.0, const AFloat alpha = 1,
-                       const AFloat beta = 1);
+                       const AFloat beta = 1) {}
    static void SigmoidDerivative(const Tensor_t & Y, const Tensor_t & dY, 
                                  const Tensor_t & X, Tensor_t & dX,
                                  const ActivationDescriptor_t activationDescr,  
                                  const AFloat alpha = 1, 
-                                 const AFloat beta = 1);
+                                 const AFloat beta = 1) {}
 
    static void Tanh(Tensor_t & X, ActivationDescriptor_t activationDescr, 
                     const double coef = 0.0, const AFloat alpha = 1,
-                    const AFloat beta = 1);
+                    const AFloat beta = 1) {}
    static void TanhDerivative(const Tensor_t & Y, const Tensor_t & dY, 
                               const Tensor_t & X, Tensor_t & dX,
                               const ActivationDescriptor_t activationDescr, 
                               const AFloat alpha = 1, 
-                              const AFloat beta = 1);
+                              const AFloat beta = 1) {}
 
+   //
+   // No cudnn implementation for the following activation functions
+   //
    //static void SymmetricRelu(Tensor_t & B);
-   /*static void SymmetricReluDerivative(Tensor_t & B,
-                                       const Tensor_t & A);*/
+   static void SymmetricReluDerivative(Tensor_t & B,
+                                       const Tensor_t & A) {}
 
    //static void SoftSign(Tensor_t & B);
-   /*static void SoftSignDerivative(Tensor_t & B,
-                                  const Tensor_t & A);*/
+   static void SoftSignDerivative(Tensor_t & B,
+                                  const Tensor_t & A) {}
 
    //static void Gauss(Tensor_t & B);
-   /*static void GaussDerivative(Tensor_t & B,
-                               const Tensor_t & A);*/
+   static void GaussDerivative(Tensor_t & B,
+                               const Tensor_t & A) {}
    ///@}
 
    //____________________________________________________________________________
@@ -232,7 +230,7 @@ public:
     * the starting of the backpropagation algorithm.
     */
       ///@{
-
+#if 0
    static Scalar_t MeanSquaredError(const Matrix_t &Y, const Matrix_t &output,
                                     const Matrix_t &weights);
    static void MeanSquaredErrorGradients(Matrix_t &dY, const Matrix_t &Y,
@@ -253,7 +251,7 @@ public:
    static void SoftmaxCrossEntropyGradients(Matrix_t &dY, const Matrix_t &Y,
                                             const Matrix_t &output, const Matrix_t &weights) {}
    ///@}
-
+# endif
    //____________________________________________________________________________
    //
    // Output Functions
@@ -422,6 +420,7 @@ public:
                                  size_t /*height*/,      size_t /*width*/, 
                                  size_t /*filterDepth*/, size_t /*filterHeight*/, 
                                  size_t /*filterWidth*/, size_t /*nLocalViews*/,
+                                 EActivationFunction activFunct = EActivationFunction::kIdentity,
                                  void * cudnnConvBwdWorkspaces = nullptr, 
                                  void * cudnnFilterBwdWorkspace = nullptr);
 
@@ -624,45 +623,69 @@ public:
 
 //____________________________________________________________________________
 template<typename AFloat>
-template<typename Layer_t>
-void TCudnn<AFloat>::InitializeCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L) {
-   auto cnnDescriptors = new CNN::TCNNDescriptors<Layer_t> ();
-   InitializeDescriptor(cnnDescriptors->LayerDescriptor);
-   InitializeDescriptor(cnnDescriptors->HelperDescriptor);
-   InitializeDescriptor(cnnDescriptors->WeightsDescriptor);
+void TCudnn<AFloat>::InitializeConvDescriptors(TDescriptors * & descriptors, double coef,
+                                               typename TCudnn<AFloat>::ConvLayer_t *L) {
+   auto convDescriptors = new CNN::TCNNDescriptors<typename TCudnn<AFloat>::ConvLayer_t> ();
+
+   //FIXME: Move this to constructor
+   cudnnDataType_t   cudnnDataType;
+   if      (std::is_same<AFloat, double>::value) { cudnnDataType = CUDNN_DATA_DOUBLE;}
+   else if (std::is_same<AFloat, float>::value)  { cudnnDataType = CUDNN_DATA_FLOAT;}
+
+   cudnnActivationMode_t activationMode;
+   switch(L->GetActivationFunction()) {
+      case EActivationFunction::kIdentity: break; // Identity activation only works for cudnnConvolutionBiasActivationForward()
+      case EActivationFunction::kRelu:     activationMode = CUDNN_ACTIVATION_RELU;    break;
+      case EActivationFunction::kSigmoid:  activationMode = CUDNN_ACTIVATION_SIGMOID; break;
+      case EActivationFunction::kTanh:     activationMode = CUDNN_ACTIVATION_TANH;    break;
+      // The activations otherwise used are not supported by cuDNN
+      default:  activationMode = CUDNN_ACTIVATION_RELU;    
+   };
    
-   descriptors = cnnDescriptors;
-}
-   
-//____________________________________________________________________________
-template <typename AFloat>
-void TCudnn<AFloat>::InitializeDescriptor(ActivationDescriptor_t & activationDescr) {
-   CUDNNCHECK(cudnnCreateActivationDescriptor(&activationDescr));
+   CUDNNCHECK(cudnnCreateConvolutionDescriptor(&convDescriptors->LayerDescriptor));
+   CUDNNCHECK(cudnnCreateActivationDescriptor(&convDescriptors->HelperDescriptor));
+   CUDNNCHECK(cudnnCreateFilterDescriptor(&convDescriptors->WeightsDescriptor));
+
+   // Set the convolution parameters
+   CUDNNCHECK(cudnnSetConvolution2dDescriptor(convDescriptors->LayerDescriptor,
+                                              L->GetPaddingHeight(),
+                                              L->GetPaddingWidth(),
+                                              L->GetStrideRows(),
+                                              L->GetStrideCols(),
+                                              1,                 //Dilation height
+                                              1,                 //Dilation width
+                                              CUDNN_CROSS_CORRELATION,
+                                              cudnnDataType));
+
+   // Dont set activation function descriptor for identity function
+   if (activationMode) CUDNNCHECK(cudnnSetActivationDescriptor(convDescriptors->HelperDescriptor,
+                                                               activationMode,
+                                                               CUDNN_PROPAGATE_NAN,
+                                                               coef));
+
+   // Set the  filter parameters
+   CUDNNCHECK(cudnnSetFilter4dDescriptor(convDescriptors->WeightsDescriptor,
+                                         cudnnDataType,
+                                         CUDNN_TENSOR_NCHW,
+                                         L->GetDepth(),
+                                         L->GetInputDepth(),
+                                         L->GetFilterHeight(),
+                                         L->GetFilterWidth()));
+
+   descriptors = convDescriptors;
 }
 
 //____________________________________________________________________________
-template <typename AFloat>
-void TCudnn<AFloat>::InitializeDescriptor(ConvolutionDescriptor_t & convolutionDescr) {
-   CUDNNCHECK(cudnnCreateConvolutionDescriptor(&convolutionDescr));
-}
-   
-//____________________________________________________________________________
-template <typename AFloat>
-void TCudnn<AFloat>::InitializeDescriptor(FilterDescriptor_t & filterDescr) {
-   CUDNNCHECK(cudnnCreateFilterDescriptor(&filterDescr));
-}
-
-//____________________________________________________________________________
-template <typename AFloat>
+/*template <typename AFloat>
 void TCudnn<AFloat>::InitializeDescriptor(PoolingDescriptor_t & poolingDescr) {
    CUDNNCHECK(cudnnCreatePoolingDescriptor(&poolingDescr));
-}
+}*/
 
 //____________________________________________________________________________
 template<typename AFloat>
 template<typename Layer_t>
-void TCudnn<AFloat>::ReleaseCNNDescriptors(CNN::TDescriptors * & descriptors, Layer_t *L) {
-   auto cnnDescriptors = static_cast<ConvDescriptors_t &>(descriptors);
+void TCudnn<AFloat>::ReleaseCNNDescriptors(TDescriptors * descriptors, Layer_t *L) {
+   auto cnnDescriptors = static_cast<ConvDescriptors_t *>(descriptors);
    ReleaseDescriptor(cnnDescriptors->LayerDescriptor);
    ReleaseDescriptor(cnnDescriptors->HelperDescriptor);
    ReleaseDescriptor(cnnDescriptors->WeightsDescriptor);
@@ -697,13 +720,6 @@ template <typename AFloat>
 void TCudnn<AFloat>::FreeWorkspace(void * workspace) {
    if (workspace) cudaFree(workspace);
 }
-
-//____________________________________________________________________________
-/*template <typename AFloat>
-void TCudnn<AFloat>::Copy(Tensor_t & A, const Tensor_t & B) {
-  if (A.GetSize() >= B.GetSize()) return;
-  cudaMemcpy(A.GetDataPointer(), B.GetDataPointer(), B.GetSize() * sizeof(AFloat), cudaMemcpyDeviceToDevice);
-}*/
 
 //____________________________________________________________________________
 /*template <typename AFloat>

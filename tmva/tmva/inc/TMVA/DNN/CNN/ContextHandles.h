@@ -22,17 +22,18 @@ namespace TMVA
 {
 namespace DNN
 { 
+   struct TDescriptors {};
+   struct TParams {};
 namespace CNN
 {
 
-struct TDescriptors {};
 //______________________________________________________________________________
 //
 // Keeps the descriptors for the CNN 
 //______________________________________________________________________________
 
 template<typename Layer_t>
-struct TCNNDescriptors : public TDescriptors {
+struct TCNNDescriptors : public TMVA::DNN::TDescriptors {
    using LayerDescriptor_t   = typename Layer_t::LayerDescriptor_t;   // Main layer operation
    using HelperDescriptor_t  = typename Layer_t::HelperDescriptor_t;  // Used to define possible helpers for the layers (e.g. activations)
    using WeightsDescriptor_t = typename Layer_t::WeightsDescriptor_t; // The weights that are modified (e.g filters)
@@ -40,9 +41,6 @@ struct TCNNDescriptors : public TDescriptors {
    LayerDescriptor_t   LayerDescriptor;
    HelperDescriptor_t  HelperDescriptor;
    WeightsDescriptor_t WeightsDescriptor;
-   
-   void InitializeDescriptors() {Layer_t::InitializeDescriptors();};
-   void ReleaseDescriptors()    {Layer_t::ReleaseDescriptors();};
 };
 
 } // namespace CNN

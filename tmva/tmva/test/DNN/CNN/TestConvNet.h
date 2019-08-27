@@ -275,11 +275,11 @@ auto testConvLayerForward(const typename Architecture::Tensor_t &input,
     TDescriptors * convDescriptors = nullptr;
     
     TConvLayer<Architecture> *layer = nullptr;
-    Architecture::InitializeCNNDescriptors(convDescriptors, layer);
+    Architecture::InitializeConvDescriptors(convDescriptors, 0.0, layer);
 
     Architecture::ConvLayerForward(computedOutput, computedDerivatives, input, weights, biases, params,
-                                 EActivationFunction::kIdentity, forwardMatrices,
-                                 (typename Architecture::ConvDescriptors_t &) *convDescriptors);
+                                   EActivationFunction::kIdentity, forwardMatrices,
+                                   (typename Architecture::ConvDescriptors_t &) *convDescriptors);
 
     for (size_t slice = 0; slice < nRows; slice++) {
         for (size_t localView = 0; localView < nCols; localView++) {
