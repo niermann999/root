@@ -515,8 +515,8 @@ auto testConvBackwardPass(size_t batchSize, size_t imgDepth, size_t imgHeight, s
          TString tname = TString::Format("weight-tensor-layer-%d",l);
          Tensor_t tW( vW[0] ); 
          Architecture::PrintTensor( tW ,std::string(tname));
-         vW[0].Print();
-         tW.Print(); 
+         //vW[0].Print();
+         //tW.Print(); 
          
       }
    }
