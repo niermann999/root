@@ -628,6 +628,8 @@ void TCpu<AFloat>::CalculateConvBiasGradients(TCpuMatrix<AFloat> &biasGradients,
 //____________________________________________________________________________
 template <typename AFloat>
 void TCpu<AFloat>::Downsample(TCpuTensor<AFloat> &tA, TCpuTensor<AFloat> &tB, const TCpuTensor<AFloat> &tC,
+                              const PoolingDescriptors_t & /*descriptors*/,
+                              PoolingWorkspace_t & /*workspace*/,
                               size_t imgHeight, size_t imgWidth, size_t fltHeight, size_t fltWidth, size_t strideRows,
                               size_t strideCols)
 {
@@ -673,6 +675,10 @@ template <typename AFloat>
 void TCpu<AFloat>::MaxPoolLayerBackward(TCpuTensor<AFloat> &activationGradientsBackward,
                                         const TCpuTensor<AFloat> &activationGradients,
                                         const TCpuTensor<AFloat> &indexMatrix,
+                                        const TCpuTensor<AFloat> & /*inputActivation*/,
+                                        const TCpuTensor<AFloat> & /*outputTensor*/,
+                                        const PoolingDescriptors_t & /*descriptors*/,
+                                        PoolingWorkspace_t & /*workspace*/,
                                         size_t /* imgHeight */,
                                         size_t /* imgWidth */,
                                         size_t /* fltHeight */,
