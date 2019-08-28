@@ -93,6 +93,12 @@ public:
    using PoolingDescriptors_t    = CNN::TCNNDescriptors<PoolingLayer_t>;
    using PoolingWorkspace_t      = CNN::TCNNWorkspace<PoolingLayer_t>;
 
+   static TMVA::Experimental::MemoryLayout GetTensorLayout() { return TMVA::Experimental::MemoryLayout::ColumnMajor; }
+
+   static Tensor_t CreateTensor(size_t n, size_t c, size_t h, size_t w) { 
+      return Tensor_t( {c,h*w,n}, GetTensorLayout()); 
+   }
+
 #if 0 // old definitions
 
    //____________________________________________________________________________

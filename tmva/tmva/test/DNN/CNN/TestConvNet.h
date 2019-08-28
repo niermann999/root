@@ -501,7 +501,8 @@ auto testConvBackwardPass(size_t batchSize, size_t imgDepth, size_t imgHeight, s
 //       TMVA_DNN_PrintTCpuMatrix(w0[i],"weight-layer0");
 // #endif  
    
-   typename Architecture::Tensor_t X(batchSize, imgDepth, imgHeight * imgWidth);
+   //typename Architecture::Tensor_t X(batchSize, imgDepth, imgHeight * imgWidth, Architecture::GetTensorLayout() );
+   auto X =  Architecture::CreateTensor( batchSize, imgDepth, imgHeight , imgWidth);
    randomBatch(X);
 
    Matrix_t Y(batchSize, convNet.GetOutputWidth());

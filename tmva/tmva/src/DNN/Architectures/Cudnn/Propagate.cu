@@ -167,20 +167,35 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
 //                                    const AFloat alpha,
 //                                    const AFloat beta)
 {
-   ((Tensor_t & )input).Reshape( {params.batchSize, params.inputDepth, params.inputHeight, params.inputWidth}); 
+   //((Tensor_t & )input).Reshape( {params.batchSize, params.inputDepth, params.inputHeight, params.inputWidth});
+   assert( input.GetLayout() == GetTensorLayout()); 
 
    size_t outputHeight =  DNN::CNN::TConvLayer<TCudnn<AFloat>>::calculateDimension(params.inputHeight, params.filterHeight, params.paddingHeight, params.strideRows);
    size_t outputWidth =  DNN::CNN::TConvLayer<TCudnn<AFloat>>::calculateDimension(params.inputWidth, params.filterWidth, params.paddingWidth, params.strideCols);
 
-   outputTensor.Reshape({params.batchSize, params.numberFilters, outputHeight, outputWidth});
-   inputActivation.Reshape( {params.batchSize, params.numberFilters, outputHeight, outputWidth});
-
-   ((Tensor_t & )weights).Reshape( { params.numberFilters, params.inputDepth, params.filterHeight, params.filterWidth } );
+   PrintTensor(input,"input");
+   PrintTensor(outputTensor,"output");
+   PrintTensor(weights,"weights"); 
+   PrintTensor(biases,"biases");
+   //((Tensor_t & )weights).Reshape( { params.numberFilters, params.inputDepth, params.filterHeight, params.filterWidth } );
+   //((Tensor_t & )biases).Reshape(  { 1,params.numberFilters, 1, 1});
    //biases.Reshape ( { 1,params.numberFilters, 1, 1});
 
    AFloat alpha = 1.0; 
    AFloat beta  = 0.0; 
    cudnnHandle_t cudnnHandle = input.GetCudnnHandle();
+
+   // check descriptors 
+   int n,c,h,w = 0; 
+   int s1,s2,s3,s4 = 0; 
+   cudnnDataType_t  dataType; 
+   cudnnGetTensor4dDescriptor( input.GetTensorDescriptor(), &dataType,&n,&c,&h,&w,&s1,&s2,&s3,&s4 );
+   std::vector<size_t>  shape_input = {n,c,h,w}; 
+   assert (shape_input == input.GetShape());
+
+   cudnnGetTensor4dDescriptor( outputTensor.GetTensorDescriptor(), &dataType,&n,&c,&h,&w,&s1,&s2,&s3,&s4 );
+   std::vector<size_t>  shape_output = {n,c,h,w}; 
+   assert (shape_output == outputTensor.GetShape());
 
 #if 0
 <<<<<<< HEAD
@@ -291,10 +306,10 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
                                        size_t /*filterDepth*/, size_t /*filterHeight*/, 
                                        size_t /*filterWidth*/, size_t /*nLocalViews*/)
 {
-   activationGradients.Reshape( outputTensor.GetShape());
-   weightGradients.Reshape( weights.GetShape());
-   biasGradients.Reshape({ 1, outputTensor.GetShape()[1], 1, 1});   // second output dimension is number of filters
-   // activationGradientsBackward.Reshape()
+   // activationGradients.Reshape( outputTensor.GetShape());
+   // weightGradients.Reshape( weights.GetShape());
+   // biasGradients.Reshape({ 1, outputTensor.GetShape()[1], 1, 1});   // second output dimension is number of filters
+   // // activationGradientsBackward.Reshape()
    // activationBackward.Reshape
 
    //--------------------------------------------------------------------------

@@ -82,6 +82,13 @@ public:
    using PoolingDescriptors_t    = CNN::TCNNDescriptors<PoolingLayer_t>;
    using PoolingWorkspace_t      = CNN::TCNNWorkspace<PoolingLayer_t>;
 
+   
+   static TMVA::Experimental::MemoryLayout GetTensorLayout() { return TMVA::Experimental::MemoryLayout::RowMajor; }
+
+
+   static Tensor_t CreateTensor(size_t n, size_t c, size_t h, size_t w) { 
+      return Tensor_t( {n,c,h,w}, GetTensorLayout(), 0, 0); 
+   }
    //____________________________________________________________________________
    //
    // Architecture Initialization
@@ -697,7 +704,8 @@ void TCudnn<AFloat>::InitializeConvDescriptors(TDescriptors * & descriptors, dou
                                               cudnnDataType));
 
    // Dont set activation function descriptor for identity function
-   if (activationMode) CUDNNCHECK(cudnnSetActivationDescriptor(convDescriptors->HelperDescriptor,
+   if (L->GetActivationFunction() != EActivationFunction::kIdentity) 
+      CUDNNCHECK(cudnnSetActivationDescriptor(convDescriptors->HelperDescriptor,
                                                                activationMode,
                                                                CUDNN_PROPAGATE_NAN,
                                                                coef));
@@ -712,6 +720,31 @@ void TCudnn<AFloat>::InitializeConvDescriptors(TDescriptors * & descriptors, dou
                                          L->GetFilterWidth()));
 
    descriptors = convDescriptors;
+
+   // fix the weight tensor shapes 
+   // by default the weights are columnmajor, set them to be row major . At this points 
+   // they are not yet initialized 
+   Tensor_t & filters = L->GetWeightsAt(0); 
+   filters = Tensor_t (filters.GetDeviceBuffer(), {L->GetDepth(),L->GetInputDepth(), L->GetFilterHeight(),L->GetFilterWidth()}, MemoryLayout::RowMajor, 0, 0 );
+   //PrintTensor(L->GetWeightsAt(0)); 
+   Tensor_t & biases = L->GetBiasesAt(0);
+   biases = Tensor_t (biases.GetDeviceBuffer(), {1, L->GetDepth(),1,1}, GetTensorLayout(), 0, 0 );
+
+   Tensor_t & output = L->GetOutput(); 
+   output = Tensor_t(output.GetDeviceBuffer(),{ L->GetBatchSize(), L->GetDepth(), L->GetHeight(), L->GetWidth() },GetTensorLayout(),0,0 );
+   Tensor_t & inputActivation = L->GetInputActivation(); 
+   inputActivation = Tensor_t(inputActivation.GetDeviceBuffer(),output.GetShape() ,GetTensorLayout(),0,0 );
+
+   Tensor_t &  activationGradients = L->GetActivationGradients();
+   activationGradients =  Tensor_t(activationGradients.GetDeviceBuffer(),output.GetShape() ,GetTensorLayout(),0,0 );
+   
+   Tensor_t & weightGradients = L->GetWeightGradientsAt(0); 
+   weightGradients = Tensor_t( weightGradients.GetDeviceBuffer(), filters.GetShape(), GetTensorLayout(), 0, 0 ); 
+   
+   Tensor_t & biasGradients = L->GetBiasGradientsAt(0); 
+   biasGradients = Tensor_t( biasGradients.GetDeviceBuffer(), biases.GetShape(), GetTensorLayout(), 0, 0 ); 
+   
+
 }
 
 //____________________________________________________________________________
