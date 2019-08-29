@@ -365,10 +365,13 @@ public:
    // element access ( for debugging)
    TCudaDeviceReference<AFloat> operator()(size_t i, size_t j) const
    {
-      assert(fNDim == 2);
+      // like this works also for multi-dim tensors 
+      // and consider the tensor as a multidim one
+      size_t nrows = GetNrows(); 
+      size_t ncols = GetNcols(); 
       
       size_t offset = (GetLayout() == MemoryLayout::RowMajor) ? 
-         i * fShape[1] + j  : j * fShape[0] + i; 
+         i * ncols + j  : j * nrows + i; 
      
       AFloat * elementPointer = fElementBuffer + offset;
       return TCudaDeviceReference<AFloat>(elementPointer);

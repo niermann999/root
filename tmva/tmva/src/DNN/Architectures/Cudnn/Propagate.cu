@@ -454,10 +454,10 @@ void TCudnn<AFloat>::ConvLayerForward(Tensor_t & outputTensor,
    size_t outputHeight =  DNN::CNN::TConvLayer<TCudnn<AFloat>>::calculateDimension(params.inputHeight, params.filterHeight, params.paddingHeight, params.strideRows);
    size_t outputWidth =  DNN::CNN::TConvLayer<TCudnn<AFloat>>::calculateDimension(params.inputWidth, params.filterWidth, params.paddingWidth, params.strideCols);
 
-   PrintTensor(input,"input");
-   PrintTensor(outputTensor,"output");
-   PrintTensor(weights,"weights"); 
-   PrintTensor(biases,"biases");
+   // PrintTensor(input,"input");
+   // PrintTensor(outputTensor,"output");
+   // PrintTensor(weights,"weights"); 
+   // PrintTensor(biases,"biases");
    //((Tensor_t & )weights).Reshape( { params.numberFilters, params.inputDepth, params.filterHeight, params.filterWidth } );
    //((Tensor_t & )biases).Reshape(  { 1,params.numberFilters, 1, 1});
    //biases.Reshape ( { 1,params.numberFilters, 1, 1});
@@ -614,7 +614,9 @@ void TCudnn<AFloat>::ConvLayerBackward(Tensor_t &activationGradientsBackward,
    
    cudnnHandle_t cudnnHandle = outputTensor.GetCudnnHandle();
     
-   CUDNNCHECK(cudnnConvolutionBackwardData(cudnnHandle,
+   // do not compute activation gradients for first layer (i.e. when input activationGradientBackward is a dummy empty tensor)
+   if (activationGradientsBackward.GetSize() > 0)
+      CUDNNCHECK(cudnnConvolutionBackwardData(cudnnHandle,
                                            &alpha,
                                            descriptors.WeightsDescriptor,
                                            weights.GetDataPointer(),
