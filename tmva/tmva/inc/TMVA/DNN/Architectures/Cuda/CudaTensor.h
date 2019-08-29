@@ -315,11 +315,11 @@ public:
          return TCudaMatrix<AFloat>(fElementBuffer, GetHSize(), GetWSize());
       
       if  (GetLayout() == MemoryLayout::ColumnMajor ) { 
-         for (int i = 2; i < fNDim; ++i)  assert( fShape[i] == 1);
+         for (size_t i = 2; i < fNDim; ++i)  assert( fShape[i] == 1);
          return TCudaMatrix<AFloat>(fElementBuffer, fShape[0], fShape[1]);
       }
       else {   // remember TCudaMatrix is always column-major
-         for (int i = 0; i < fNDim-2; ++i)  assert( fShape[i] == 1);
+         for (size_t i = 0; i < fNDim-2; ++i)  assert( fShape[i] == 1);
          return TCudaMatrix<AFloat>(fElementBuffer, fShape[fNDim-1], fShape[fNDim-2]);
       }
    }
