@@ -104,19 +104,19 @@ public:
 
    static void ReleaseConvDescriptors(TDescriptors    * descriptors, ConvLayer_t    *L = nullptr);
    static void ReleasePoolDescriptors(TDescriptors * descriptors, PoolingLayer_t *L = nullptr);
-   static void ReleaseDescriptor(EmptyDescriptor_t &       emptyDescr) {}        // Does nothing
-   static void ReleaseDescriptor(ActivationDescriptor_t &  activationDescr);
+   static void ReleaseDescriptor(EmptyDescriptor_t       & emptyDescr) {}        // Does nothing
+   static void ReleaseDescriptor(ActivationDescriptor_t  & activationDescr);
    static void ReleaseDescriptor(ConvolutionDescriptor_t & convolutionDescr);
-   static void ReleaseDescriptor(DropoutDescriptor_t & dropoutDescr) {}
-   static void ReleaseDescriptor(FilterDescriptor_t &      filterDescr);
-   static void ReleaseDescriptor(PoolingDescriptor_t &     poolingDescr);
+   static void ReleaseDescriptor(DropoutDescriptor_t     & dropoutDescr);
+   static void ReleaseDescriptor(FilterDescriptor_t      & filterDescr);
+   static void ReleaseDescriptor(PoolingDescriptor_t     & poolingDescr);
    
    
    static void InitializeConvWorkspace(TWorkspace * & workspace,
                                        TDescriptors * & descriptors,
                                        const DNN::CNN::TConvParams & params,
                                        ConvLayer_t *L = nullptr);
-   static void InitializePoolWorkspace(TWorkspace * & workspace,
+   static void InitializeDropoutWorkspace(TWorkspace * & workspace,
                                        TDescriptors * & descriptors,
                                        const DNN::CNN::TConvParams & params,
                                        PoolingLayer_t *L = nullptr);
@@ -205,33 +205,6 @@ public:
                                           const ActivationDescriptor_t activationDescr,
                                           const AFloat alpha = 1, 
                                           const AFloat beta = 0);
-                    
-   static void Relu(Tensor_t & X, ActivationDescriptor_t activationDescr, 
-                    const double coef = 0.0, const AFloat alpha = 1, 
-                    const AFloat beta = 1) {}          
-   static void ReluDerivative(const Tensor_t & Y, const Tensor_t & dY, 
-                              const Tensor_t & X, Tensor_t & dX,
-                              const ActivationDescriptor_t activationDescr, 
-                              const AFloat alpha = 1, 
-                              const AFloat beta = 1) {}
-
-   static void Sigmoid(Tensor_t & X, ActivationDescriptor_t activationDescr,
-                       const double coef = 0.0, const AFloat alpha = 1,
-                       const AFloat beta = 1) {}
-   static void SigmoidDerivative(const Tensor_t & Y, const Tensor_t & dY, 
-                                 const Tensor_t & X, Tensor_t & dX,
-                                 const ActivationDescriptor_t activationDescr,  
-                                 const AFloat alpha = 1, 
-                                 const AFloat beta = 1) {}
-
-   static void Tanh(Tensor_t & X, ActivationDescriptor_t activationDescr, 
-                    const double coef = 0.0, const AFloat alpha = 1,
-                    const AFloat beta = 1) {}
-   static void TanhDerivative(const Tensor_t & Y, const Tensor_t & dY, 
-                              const Tensor_t & X, Tensor_t & dX,
-                              const ActivationDescriptor_t activationDescr, 
-                              const AFloat alpha = 1, 
-                              const AFloat beta = 1) {}
 
    //
    // No cudnn implementation for the following activation functions
@@ -366,7 +339,14 @@ public:
 
    /** Apply dropout with activation probability \p p to the given
     *  tensor \p A and scale the result by reciprocal of \p p. */
-   static void Dropout(Tensor_t & A, Scalar_t p) {}
+   static void DropoutForward(Tensor_t & A, 
+                              TDescriptors * descriptors,
+                              TWorkspace         * workspace, 
+                              Scalar_t p);
+
+   static void DropoutBackward(Tensor_t & A,
+                               TDescriptors * descriptors,
+                               TWorkspace   * workspace);
 
       ///@}
 

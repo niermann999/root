@@ -114,7 +114,7 @@ public:
                                        TDescriptors * & /*descriptors*/,
                                        const DNN::CNN::TConvParams & /*params*/,
                                        ConvLayer_t */*L = nullptr*/) {}
-   static void InitializePoolWorkspace(TWorkspace * & /*workspace*/,
+   static void InitializeDropoutWorkspace(TWorkspace * & /*workspace*/,
                                        TDescriptors * & /*descriptors*/,
                                        const DNN::CNN::TConvParams & /*params*/,
                                        PoolingLayer_t */*L = nullptr*/) {}
@@ -390,13 +390,19 @@ public:
 
    /** Apply dropout with activation probability \p p to the given
     *  tensor \p A and scale the result by reciprocal of \p p. */
-   static void Dropout(Tensor_t & A, Scalar_t p);
+   static void DropoutForward(Tensor_t & A, 
+                              TDescriptors * descriptors,
+                              TWorkspace   * workspace, 
+                              Scalar_t p);
 
-   static void Dropout(Matrix_t & A, Scalar_t p) { 
+   static void DropoutForward(Matrix_t & A, Scalar_t p) { 
       Tensor_t tA(A);
-      Dropout( tA, p );
+      DropoutForward( tA, static_cast<TDescriptors *> (nullptr), static_cast<TWorkspace *> (nullptr), p );
    }
 
+   static void DropoutBackward(Tensor_t & A,                               
+                               TDescriptors * descriptors,
+                               TWorkspace   * workspace) {}
    ///@}
 
    //____________________________________________________________________________

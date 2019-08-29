@@ -225,7 +225,13 @@ template <typename AFloat>
 void TCudnn<AFloat>::ReleaseDescriptor(ConvolutionDescriptor_t & convolutionDescr) {
    CUDNNCHECK(cudnnDestroyConvolutionDescriptor(convolutionDescr));
 }
-   
+
+//____________________________________________________________________________
+template <typename AFloat>
+void TCudnn<AFloat>::ReleaseDescriptor(DropoutDescriptor_t & dropoutDescr) {
+   CUDNNCHECK(cudnnDestroyDropoutDescriptor(dropoutDescr));
+}
+
 //____________________________________________________________________________
 template <typename AFloat>
 void TCudnn<AFloat>::ReleaseDescriptor(FilterDescriptor_t & filterDescr) {
@@ -368,20 +374,43 @@ void TCudnn<AFloat>::InitializeConvWorkspace(TWorkspace * & workspace,
    workspace = convWorkspace;
 }
 
+
 //____________________________________________________________________________
 template <typename AFloat>
-void TCudnn<AFloat>::InitializePoolWorkspace(TWorkspace * & workspace,
+void TCudnn<AFloat>::InitializeDropoutWorkspace(TWorkspace * & workspace,
                                              TDescriptors * & descriptors, 
                                              const DNN::CNN::TConvParams & /*params*/,
                                              PoolingLayer_t *L) {
    auto poolWorkspace = new PoolingWorkspace_t ();
    auto poolDescriptors = static_cast<PoolingDescriptors_t *>(descriptors);
 
-   Tensor_t & outputTensor = L->GetOutput(); 
-   outputTensor = Tensor_t(outputTensor.GetDeviceBuffer(),{ L->GetBatchSize(), L->GetDepth(), L->GetHeight(), L->GetWidth() },GetTensorLayout(),0,0 );
+   Tensor_t inputTensor ({L->GetBatchSize(), L->GetInputDepth(), L->GetInputHeight(), L->GetInputWidth()}, MemoryLayout::RowMajor, 0, 0);
+   cudnnHandle_t cudnnHandle = inputTensor.GetCudnnHandle();
 
-   Tensor_t &  activationGradients = L->GetActivationGradients();
-   activationGradients =  Tensor_t(activationGradients.GetDeviceBuffer(),outputTensor.GetShape() ,GetTensorLayout(),0,0 );
+   // Space needed to execute forward and backward dropout pass
+   CUDNNCHECK(cudnnDropoutGetReserveSpaceSize(inputTensor.GetTensorDescriptor(),
+                                              &poolWorkspace->HelperWorkspaceSize));
+
+   if (poolWorkspace->HelperWorkspaceSize) cudaMalloc(&poolWorkspace->HelperWorkspace, 
+                                                      poolWorkspace->HelperWorkspaceSize*sizeof(AFloat));
+   
+   // Space that containrandom pass                                           
+   CUDNNCHECK(cudnnDropoutGetStatesSize(cudnnHandle,
+                                        &poolWorkspace->ForwardWorkspaceSize));
+
+   if (poolWorkspace->ForwardWorkspaceSize) cudaMalloc(&poolWorkspace->ForwardWorkspace, 
+                                                       poolWorkspace->ForwardWorkspaceSize*sizeof(AFloat));
+
+                                                          // Fill the dropout workspace with random numbers and copy to device
+   TRandom &  rand = TCudnn<AFloat>::GetRandomGenerator();
+   unsigned long long seed = 5496729; //rand.Uniform(0, ULLONG_MAX);
+   // Reset the descriptor at every forward pass, so that random states get newly initialized?
+   CUDNNCHECK(cudnnSetDropoutDescriptor(poolDescriptors->HelperDescriptor,
+                                        cudnnHandle,
+                                        L->GetDropoutProbability(),
+                                        poolWorkspace->ForwardWorkspace,
+                                        poolWorkspace->ForwardWorkspaceSize,
+                                        seed));
 
    workspace = poolWorkspace;
 }
