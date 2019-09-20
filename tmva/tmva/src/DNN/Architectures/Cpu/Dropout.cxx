@@ -22,8 +22,9 @@ namespace DNN  {
 //____________________________________________________________________________
 template<typename AFloat>
 void TCpu<AFloat>::DropoutForward(TCpuTensor<AFloat> & A, 
-                                  TDescriptors * /*descriptors*/,
-                                  TWorkspace   * /*workspace*/, 
+                                  const DropoutWorkspace_t & /*dropoutWorkspace*/,
+                                  //TDescriptors * descriptors,
+                                  //TWorkspace   * workspace,  
                                   AFloat dropoutProbability)
 {
    AFloat *data = A.GetData();

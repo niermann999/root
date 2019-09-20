@@ -38,6 +38,20 @@
 
 namespace TMVA {
 namespace DNN {
+
+// Reimplementaion from TMVA::DNN::CNN::TPoolParams in MaxPoolLayer.h
+typedef struct TDenseParams : public TParams {
+   float dropoutProbability;   ///< Probability for a single element of the activation to be set to zero
+
+   TDenseParams(size_t _batchSize, size_t _inputDepth, size_t _inputHeight, size_t _inputWidth, 
+                size_t _filterHeight, size_t _filterWidth, size_t _strideRows, size_t _strideCols,
+                size_t _paddingHeight, size_t _paddingWidth, float _dropoutProbability = 1.0)      //FIXME: Remove default values
+                : TParams(_batchSize, _inputDepth, _inputHeight, _inputWidth, _filterHeight, _filterWidth, _strideRows,
+                         _strideCols, _paddingHeight, _paddingWidth),
+                 dropoutProbability(_dropoutProbability)
+   {}
+} TDenseParams;
+
 /** \class TDenseLayer
 
 Generic layer class.
@@ -61,6 +75,10 @@ public:
    using Matrix_t = typename Architecture_t::Matrix_t;
    using Tensor_t = typename Architecture_t::Tensor_t;
 
+   using ActivationOptions_t    = typename Architecture_t::ActivationOptions_t;
+   using ActivationWorkspace_t  = typename Architecture_t::ActivationWorkspace_t;
+   using DropoutWorkspace_t     = typename Architecture_t::DropoutWorkspace_t;
+
 private:
 
    Tensor_t fInputActivation; /// output of GEMM and input to activation function
@@ -68,16 +86,17 @@ private:
 
    Scalar_t fDropoutProbability; ///< Probability that an input is active.
 
-   EActivationFunction fF; ///< Activation function of the layer.
+   //EActivationFunction fF; ///< Activation function of the layer.
    ERegularization fReg;   ///< The regularization method.
    Scalar_t fWeightDecay;  ///< The weight decay.
 
-   typename Architecture_t::ActivationDescriptor_t fActivationDesc; // the descriptor for the activation function  
+   ActivationWorkspace_t * fActivWorkspace   = nullptr;    ///< Contains descriptors and settings concerning the activation function
+   DropoutWorkspace_t    * fDropoutWorkspace = nullptr;    ///< Contains descriptors and pointers to on-device memory needed for the dropout operation
 
 public:
    /*! Constructor */
    TDenseLayer(size_t BatchSize, size_t InputWidth, size_t Width, EInitialization init, Scalar_t DropoutProbability,
-               EActivationFunction f, ERegularization reg, Scalar_t weightDecay);
+               /*EActivationFunction f, */ERegularization reg, Scalar_t weightDecay, const ActivationOptions_t & activOptions);
 
    /*! Copy the dense layer provided as a pointer */
    TDenseLayer(TDenseLayer<Architecture_t> *layer);
@@ -121,9 +140,17 @@ public:
    const Tensor_t &GetInputActivation() const { return fInputActivation; }
    Tensor_t &GetInputActivation() { return fInputActivation; }
    
-   EActivationFunction GetActivationFunction() const { return fF; }
+   EActivationFunction GetActivationFunction() const { return fActivWorkspace->activationFunction; }
    ERegularization GetRegularization() const { return fReg; }
    Scalar_t GetWeightDecay() const { return fWeightDecay; }
+
+   /** Get descriptors and options for the activation function. */
+   ActivationWorkspace_t & GetActivWorkspace() {return *fActivWorkspace;}
+   const ActivationWorkspace_t & GetActivWorkspace() const {return *fActivWorkspace;}
+
+   /** Get the descriptors and device memory used for the dropout operation. */
+   const DropoutWorkspace_t & GetDropoutWorkspace() const { return *fDropoutWorkspace; }
+   DropoutWorkspace_t & GetDropoutWorkspace() { return *fDropoutWorkspace; }
 };
 
 //
@@ -132,17 +159,22 @@ public:
 //______________________________________________________________________________
 template <typename Architecture_t>
 TDenseLayer<Architecture_t>::TDenseLayer(size_t batchSize, size_t inputWidth, size_t width, EInitialization init,
-                                         Scalar_t dropoutProbability, EActivationFunction f, ERegularization reg,
-                                         Scalar_t weightDecay)
+                                         Scalar_t dropoutProbability, /*EActivationFunction f, */ERegularization reg,
+                                         Scalar_t weightDecay, const ActivationOptions_t & activOptions)
    :  VGeneralLayer<Architecture_t>(batchSize, 1, 1, inputWidth, 1, 1, width, 1, width, inputWidth, 1, width, 1, 1,
-                                   batchSize, width, init),
-      fInputActivation(), fDropoutProbability(dropoutProbability), fF(f), fReg(reg), fWeightDecay(weightDecay)
+                                    batchSize, width, init),
+      fInputActivation(), fDropoutProbability(dropoutProbability),/* fF(activoptions.activationFunction),*/ fReg(reg),
+      fWeightDecay(weightDecay)
 {
    // should be  {1, batchSize, width} but take from output
    fInputActivation = Tensor_t ( this->GetOutput().GetShape() );
    fDerivatives = Tensor_t ( this->GetOutput().GetShape() );
 
-   Architecture_t::InitializeActivationDescriptor(fActivationDesc,fF);
+   TDenseParams params(this->GetBatchSize(), this->GetInputDepth(), this->GetInputHeight(), this->GetInputWidth(), 
+                       0, 0, 0, 0, 0, 0, this->GetDropoutProbability());
+
+   fActivWorkspace = new ActivationWorkspace_t(params, activOptions);
+   fDropoutWorkspace = new DropoutWorkspace_t(params, TOptions());
 }
 
 //______________________________________________________________________________
@@ -151,10 +183,14 @@ TDenseLayer<Architecture_t>::TDenseLayer(TDenseLayer<Architecture_t> *layer) :
    VGeneralLayer<Architecture_t>(layer), 
    fInputActivation( layer->GetInputActivation().GetShape() ), 
    fDropoutProbability(layer->GetDropoutProbability()),
-   fF(layer->GetActivationFunction()), fReg(layer->GetRegularization()), fWeightDecay(layer->GetWeightDecay())
+   /*fF(layer->GetActivationFunction()),*/ fReg(layer->GetRegularization()), fWeightDecay(layer->GetWeightDecay())
 {
    fDerivatives = Tensor_t ( this->GetOutput().GetShape() );
-   Architecture_t::InitializeActivationDescriptor(fActivationDesc,fF);
+
+   fActivWorkspace = new ActivationWorkspace_t();
+   fDropoutWorkspace = new DropoutWorkspace_t();
+   ActivationWorkspace_t::DeepCopy(fActivWorkspace, layer->GetActivWorkspace());
+   DropoutWorkspace_t::DeepCopy(fDropoutWorkspace, layer->GetDropoutWorkspace());
 }
 
 //______________________________________________________________________________
@@ -163,21 +199,24 @@ TDenseLayer<Architecture_t>::TDenseLayer(const TDenseLayer &layer) :
    VGeneralLayer<Architecture_t>(layer), 
    fInputActivation( layer->GetInputActivation()), 
    fDropoutProbability(layer.fDropoutProbability), 
-   fF(layer.fF), fReg(layer.fReg), fWeightDecay(layer.fWeightDecay)
+   /*fF(layer.fF),*/ fReg(layer.fReg), fWeightDecay(layer.fWeightDecay)
 {
    fDerivatives = Tensor_t ( this->GetOutput().GetShape() );
-   Architecture_t::InitializeActivationDescriptor(fActivationDesc,fF);
+
+   fActivWorkspace = new ActivationWorkspace_t();
+   fDropoutWorkspace = new DropoutWorkspace_t();
+   ActivationWorkspace_t::DeepCopy(fActivWorkspace, layer.GetActivWorkspace());
+   DropoutWorkspace_t::DeepCopy(fDropoutWorkspace, layer.GetDropoutWorkspace());
 }
 
 //______________________________________________________________________________
 template <typename Architecture_t>
 TDenseLayer<Architecture_t>::~TDenseLayer()
 {
-   // release activation descriptor
-   Architecture_t::ReleaseDescriptor(fActivationDesc);
+   // release descriptors and allocated memory
+   if (fActivWorkspace) delete fActivWorkspace;
+   if (fDropoutWorkspace) delete fDropoutWorkspace;
 }
-
-
 
 
 //______________________________________________________________________________
@@ -185,9 +224,7 @@ template <typename Architecture_t>
 auto TDenseLayer<Architecture_t>::Forward( Tensor_t &input, bool applyDropout) -> void
 {
    if (applyDropout && (this->GetDropoutProbability() != 1.0)) {
-      // 
-      Architecture_t::DropoutForward(input, static_cast<TDescriptors *> (nullptr), 
-                                     static_cast<TWorkspace *> (nullptr), 
+      Architecture_t::DropoutForward(input, this->GetDropoutWorkspace(), 
                                      this->GetDropoutProbability());
    }
    Architecture_t::MultiplyTranspose(this->GetOutput() , input, this->GetWeightsAt(0));
@@ -196,7 +233,7 @@ auto TDenseLayer<Architecture_t>::Forward( Tensor_t &input, bool applyDropout) -
    //evaluate<Architecture_t>(this->GetOutput(), this->GetActivationFunction());
    Architecture_t::Copy(this->GetInputActivation(),this->GetOutput());
    
-   Architecture_t::ActivationFunctionForward(this->GetOutput(), this->GetActivationFunction(), fActivationDesc);
+   Architecture_t::ActivationFunctionForward(this->GetOutput(), this->GetActivWorkspace());
 }
 
 //______________________________________________________________________________
@@ -205,16 +242,13 @@ auto TDenseLayer<Architecture_t>::Backward(Tensor_t &gradients_backward, const T
 ///                                           std::vector<Matrix_t> & /*inp1*/, std::vector<Matrix_t> &
 ////                                           /*inp2*/) -> void
 {
-
    if (this->GetDropoutProbability() != 1.0) {
-      Architecture_t::DropoutBackward(this->GetActivationGradients(), 
-      static_cast<TDescriptors *> (nullptr), 
-      static_cast<TWorkspace *> (nullptr));
+      Architecture_t::DropoutBackward(this->GetActivationGradients(), this->GetDropoutWorkspace());
    }
-   typename Architecture_t::ActivationDescriptor_t activDesc; // use for the moment a dummy descriptor
+   
    Architecture_t::ActivationFunctionBackward(fDerivatives, this->GetOutput(), 
                                               this->GetActivationGradients(), this->GetInputActivation(),
-                                              this->GetActivationFunction(), fActivationDesc);
+                                              this->GetActivWorkspace());
 
    Architecture_t::Backward(gradients_backward, this->GetWeightGradientsAt(0), this->GetBiasGradientsAt(0),
                             fDerivatives, this->GetActivationGradients(), this->GetWeightsAt(0),
@@ -236,7 +270,7 @@ void TDenseLayer<Architecture_t>::Print() const
    
    std::vector<std::string> activationNames = { "Identity","Relu","Sigmoid","Tanh","SymmRelu","SoftSign","Gauss" };
    std::cout << "\t Activation Function = ";
-   std::cout << activationNames[ static_cast<int>(fF) ];
+   std::cout << activationNames[ static_cast<int>(this->GetActivationFunction()) ];
    if (fDropoutProbability != 1.) std::cout << "\t Dropout prob. = " << fDropoutProbability;
    std::cout << std::endl;
 }

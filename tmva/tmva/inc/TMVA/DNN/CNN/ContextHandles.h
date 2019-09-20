@@ -19,57 +19,81 @@
 #define TMVA_DNN_CNN_DESCRIPTORS
 
 #include <stddef.h>
+#include <set>
+#include <string>
 
 namespace TMVA
 {
 namespace DNN
 { 
-   struct TDescriptors {};
-   struct TWorkspace {};
-namespace CNN
-{
 
-//______________________________________________________________________________
-//
-// Keeps the descriptors for the CNN 
-//______________________________________________________________________________
+   /** Contains parameters for the DNN layers.*/
+   struct TParams {
+      size_t batchSize; ///< Batch size used for training and evaluation
 
-template<typename Layer_t>
-struct TCNNDescriptors : public TMVA::DNN::TDescriptors {
-   using LayerDescriptor_t   = typename Layer_t::LayerDescriptor_t;   // Main layer operation
-   using HelperDescriptor_t  = typename Layer_t::HelperDescriptor_t;  // Used to define possible helpers for the layers (e.g. activations)
-   using WeightsDescriptor_t = typename Layer_t::WeightsDescriptor_t; // The weights that are modified (e.g filters)
+      // FIXME: Move these to CNN params:
+      size_t inputDepth;  ///< The depth of the previous layer or input.
+      size_t inputHeight; ///< The height of the previous layer or input.
+      size_t inputWidth;  ///< The width of the previous layer or input.
 
-   LayerDescriptor_t   LayerDescriptor;
-   HelperDescriptor_t  HelperDescriptor;
-   WeightsDescriptor_t WeightsDescriptor;
-};
+      size_t filterHeight;  ///< The height of the filter.
+      size_t filterWidth;   ///< The width of the filter.
 
-template<typename Layer_t>
-struct TCNNWorkspace : public TMVA::DNN::TWorkspace {
-   using AlgorithmForward_t  = typename Layer_t::AlgorithmForward_t;  // Forward layer operation
-   using AlgorithmBackward_t = typename Layer_t::AlgorithmBackward_t; // Backward layer operation
-   using AlgorithmHelper_t   = typename Layer_t::AlgorithmHelper_t;   // Used for weight grad backward pass
+      size_t strideRows;    ///< The number of row pixels to slid the filter each step.
+      size_t strideCols;    ///< The number of column pixels to slid the filter each step
+      size_t paddingHeight; ///< The number of zero layers added top and bottom of the input.
+      size_t paddingWidth;  ///< The number of zero layers left and right of the input.
 
-   // FIXME: Add other cudnn types (algorithm preference etc.)
-   using AlgorithmDataType_t = typename Layer_t::AlgorithmDataType_t;
+      TParams() = default;
+      TParams(const TParams  &) = default;
+      TParams(      TParams &&) = default;
 
-   AlgorithmForward_t  AlgorithmForward;
-   AlgorithmBackward_t AlgorithmBackward;
-   AlgorithmHelper_t   HelperAlgorithm;
+      TParams(size_t _batchSize, size_t _inputDepth, size_t _inputHeight, size_t _inputWidth,
+              size_t _filterHeight, size_t _filterWidth, size_t _strideRows, size_t _strideCols,
+              size_t _paddingHeight, size_t _paddingWidth) 
+              : batchSize(_batchSize), inputDepth(_inputDepth), inputHeight(_inputHeight), 
+                inputWidth(_inputWidth), filterHeight(_filterHeight), filterWidth(_filterWidth),
+                strideRows(_strideRows), strideCols(_strideCols), paddingHeight(_paddingHeight),
+                paddingWidth(_paddingWidth)
+      {}
 
-   AlgorithmDataType_t DataType;
+      TParams & operator=(const TParams  &) = default;
+      TParams & operator=(      TParams &&) = default;
 
-   size_t * ForwardWorkspace;
-   size_t * BackwardWorkspace;
-   size_t * HelperWorkspace;
+      virtual ~TParams() {};
+   };
 
-   size_t ForwardWorkspaceSize;
-   size_t BackwardWorkspaceSize;
-   size_t HelperWorkspaceSize;
-};
+   /** Contains the options that are set at library call level (cuDNN). */
+   struct TOptions {
+      TOptions() = default;
+      TOptions(const TOptions  &) = default;
+      TOptions(      TOptions &&) = default;
 
-} // namespace CNN
+      TOptions & operator=(const TOptions  &) = default;
+      TOptions & operator=(      TOptions &&) = default;
+
+      virtual ~TOptions() {};
+   };
+
+   /** Contains descriptors and pointers to allocated memory, which are used
+    *  by the CNN/RNN layers during fwd/bwd propagation
+    */
+   struct TWorkspace {
+      TWorkspace() = default;
+      TWorkspace(const TParams & /*params*/,  const TOptions & /*userOptions*/) {};
+
+      TWorkspace(const TWorkspace  &) = default;     // When moving the workspace around, don't make deep copies
+      TWorkspace(      TWorkspace &&) = default;
+      TWorkspace & operator=(const TWorkspace  &) = default;
+      TWorkspace & operator=(      TWorkspace &&) = default;
+
+      // Avoid multiple definition for pure virtual destructor -> protected constructor instead
+      virtual ~TWorkspace() {};
+
+      /** Allows for deep copies of a workspace, also including device memory. */
+      virtual void DeepCopy(TWorkspace & A, const TWorkspace & B) = 0;
+   };
+
 } // namespace DNN
 } // namespace TMVA
 

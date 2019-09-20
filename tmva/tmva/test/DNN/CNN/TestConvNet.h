@@ -30,6 +30,7 @@
 #include "../Utility.h"
 
 #include "TMVA/DNN/Functions.h"
+#include "TMVA/DNN/CNN/ContextHandles.h"
 #include "TMVA/DNN/DeepNet.h"
 
 
@@ -100,6 +101,10 @@ auto testDownsample(const typename Architecture::Matrix_t &A, const typename Arc
                     const typename Architecture::Matrix_t &B, size_t imgHeight, size_t imgWidth, size_t fltHeight,
                     size_t fltWidth, size_t strideRows, size_t strideCols) -> bool
 {
+   using Tensor_t = typename Architecture::Tensor_t;
+   using Matrix_t = typename Architecture::Matrix_t;
+   using PoolingOptions_t = typename Architecture::PoolingOptions_t;
+   using PoolingWorkspace_t = typename Architecture::PoolingWorkspace_t;
 
    size_t m1, n1;
    m1 = B.GetNrows();
@@ -111,28 +116,21 @@ auto testDownsample(const typename Architecture::Matrix_t &A, const typename Arc
    m2 = ind.GetNrows();
    n2 = ind.GetNcols();
 
-   typename Architecture::Matrix_t AInd(m2, n2);
+   Matrix_t AInd(m2, n2);
 
-   typename Architecture::Tensor_t tDown(ADown,3); // convert to tensors of dims 3 
-   typename Architecture::Tensor_t tInd(AInd,3); 
-   typename Architecture::Tensor_t tA(A,3); 
+   Tensor_t tDown(ADown,3); // convert to tensors of dims 3 
+   Tensor_t tInd(AInd,3); 
+   Tensor_t tA(A,3); 
 
    std::cout << "Testing downsample with size = " << fltHeight << " , " << fltWidth 
    << " stride " << strideRows << " . " << strideCols << std::endl;
 
-   TDescriptors * poolDescriptors = nullptr;
-   TWorkspace   * poolWorkspace   = nullptr;
-   TConvParams params(1, imgHeight, imgWidth, imgWidth, 1, fltHeight, fltWidth, strideRows,
-                      strideCols, 0, 0);
+   TPoolParams params(1, imgHeight, imgWidth, imgWidth, fltHeight, fltWidth, strideRows,
+                      strideCols, 0, 0, 0);
+   PoolingWorkspace_t poolingWorkspace(params, PoolingOptions_t());
 
-   TMaxPoolLayer<Architecture> *layer = nullptr;
-   Architecture::InitializePoolDescriptors(poolDescriptors, layer);
-   Architecture::InitializeDropoutWorkspace(poolWorkspace, poolDescriptors, params, layer);
-
-   Architecture::Downsample(tDown, tInd, tA, 
-                            (typename Architecture::PoolingDescriptors_t &) *poolDescriptors,
-                            (typename Architecture::PoolingWorkspace_t &) *poolWorkspace,
-                            imgHeight, imgWidth, fltHeight, fltWidth, strideRows, strideCols);
+   Architecture::Downsample(tDown, tInd, tA, poolingWorkspace, imgHeight, imgWidth, 
+                            fltHeight, fltWidth, strideRows, strideCols);
 
    for (size_t i = 0; i < m1; i++) {
       for (size_t j = 0; j < n1; j++) {
@@ -169,43 +167,42 @@ template <typename Architecture>
 auto testPoolingBackward(const typename Architecture::Matrix_t &input, const typename Architecture::Matrix_t &output,
                          const typename Architecture::Matrix_t &indexMatrix, size_t imgHeight, size_t imgWidth,
                          size_t fltHeight, size_t fltWidth, size_t strideRows, size_t strideCols, size_t nLocalViews,
-                         double epsilon = 0.01) -> bool {
-    size_t depth = output.GetNrows();
+                         double epsilon = 0.01) -> bool 
+{
+   using Tensor_t = typename Architecture::Tensor_t;
+   using PoolingOptions_t = typename Architecture::PoolingOptions_t;
+   using PoolingWorkspace_t = typename Architecture::PoolingWorkspace_t;
 
-    typename Architecture::Tensor_t ABack(1,output.GetNrows(), output.GetNcols());
-    typename Architecture::Tensor_t tInput( input, 3);
-    typename Architecture::Tensor_t tIndexMatrix( indexMatrix, 3);
-    // only needed in cuDNN backward pass
-    typename Architecture::Tensor_t inputActivation;  
-    typename Architecture::Tensor_t outputActivation;
+   size_t depth = output.GetNrows();
 
-    TDescriptors * poolDescriptors = nullptr;
-    TWorkspace   * poolWorkspace   = nullptr;
-    TConvParams params(1, imgHeight, imgWidth, imgWidth, 1, fltHeight, fltWidth, strideRows,
-                      strideCols, 0, 0);
+   Tensor_t ABack(1,output.GetNrows(), output.GetNcols());
+   Tensor_t tInput( input, 3);
+   Tensor_t tIndexMatrix( indexMatrix, 3);
+   // only needed in cuDNN backward pass
+   Tensor_t inputActivation;  
+   Tensor_t outputActivation;
 
-    TMaxPoolLayer<Architecture> *layer = nullptr;
-    Architecture::InitializePoolDescriptors(poolDescriptors, layer);
-    Architecture::InitializeDropoutWorkspace(poolWorkspace, poolDescriptors, params, layer);
+   TPoolParams params(1, imgHeight, imgWidth, imgWidth, fltHeight, fltWidth, strideRows,
+                      strideCols, 0, 0, 0);
+   PoolingWorkspace_t poolingWorkspace(params, PoolingOptions_t());
 
-    Architecture::MaxPoolLayerBackward(ABack, tInput, tIndexMatrix, inputActivation, outputActivation,
-                                       (typename Architecture::PoolingDescriptors_t &) *poolDescriptors,
-                                       (typename Architecture::PoolingWorkspace_t &) *poolWorkspace,
-                                       imgHeight, imgWidth, fltHeight, fltWidth,
-                                       strideRows, strideCols, nLocalViews);
+   Architecture::MaxPoolLayerBackward(ABack, tInput, tIndexMatrix, inputActivation, outputActivation,
+                                      poolingWorkspace,
+                                      imgHeight, imgWidth, fltHeight, fltWidth,
+                                      strideRows, strideCols, nLocalViews);
 
-    /* Needed to support double (almost) equality */
-    auto almostEqual = [epsilon](double a, double b) {
-        // Using a magic EPSILON value (makes sense for the existing tests).
-        return fabs(a - b) < epsilon;
-    };
+   /* Needed to support double (almost) equality */
+   auto almostEqual = [epsilon](double a, double b) {
+      // Using a magic EPSILON value (makes sense for the existing tests).
+      return fabs(a - b) < epsilon;
+   };
 
-    for (size_t d = 0; d < depth; d++) {
-        for (size_t i = 0; i < nLocalViews; i++) {
-            if (!almostEqual(ABack(0, d, i), output(d, i))) return false;
-        }
-    }
-    return true;
+   for (size_t d = 0; d < depth; d++) {
+      for (size_t i = 0; i < nLocalViews; i++) {
+         if (!almostEqual(ABack(0, d, i), output(d, i))) return false;
+      }
+   }
+   return true;
 }
 
 /** Reshape the matrix A using the Reshape function and compare it to
@@ -269,48 +266,51 @@ auto testConvLayerForward(const typename Architecture::Tensor_t &input,
                           size_t fltWidth, size_t numberFilters, size_t strideRows, size_t strideCols,
                           size_t zeroPaddingHeight, size_t zeroPaddingWidth) -> bool
 {
-    size_t nRows = expectedOutput.GetHSize();
-    size_t nCols = expectedOutput.GetWSize();
-    size_t batchSize = 1;
+   using Tensor_t = typename Architecture::Tensor_t;
+   using ActivationOptions_t = typename Architecture::ActivationOptions_t;
+   using ConvolutionOptions_t = typename Architecture::ConvolutionOptions_t;
+   using ActivationWorkspace_t = typename Architecture::ActivationWorkspace_t;
+   using ConvolutionWorkspace_t = typename Architecture::ConvolutionWorkspace_t;
 
-    typename Architecture::Tensor_t computedOutput( batchSize, nRows, nCols);
-    typename Architecture::Tensor_t computedDerivatives(batchSize, nRows, nCols);
+   size_t nRows = expectedOutput.GetHSize();
+   size_t nCols = expectedOutput.GetWSize();
+   size_t batchSize = 1;
+   size_t dilationHeight = 1;
+   size_t dilationWidth = 1;
+
+   Tensor_t computedOutput(batchSize, nRows, nCols);
+   Tensor_t computedDerivatives(batchSize, nRows, nCols);
 
     TConvParams params(1, inputDepth, inputHeight, inputWidth, numberFilters, fltHeight, fltWidth, strideRows,
-                       strideCols, zeroPaddingHeight, zeroPaddingWidth);
+                       strideCols, zeroPaddingHeight, zeroPaddingWidth, dilationHeight, dilationWidth);
 
 
-    size_t height = (inputHeight - fltHeight + 2 * zeroPaddingHeight) / strideRows + 1;
-    size_t width = (inputWidth - fltWidth + 2 * zeroPaddingWidth) / strideCols + 1;
-    size_t nLocalViews = height * width;
-    size_t nLocalViewPixels = inputDepth * fltHeight * fltWidth;
+   size_t height = (inputHeight - fltHeight + 2 * zeroPaddingHeight) / strideRows + 1;
+   size_t width = (inputWidth - fltWidth + 2 * zeroPaddingWidth) / strideCols + 1;
+   size_t nLocalViews = height * width;
+   size_t nLocalViewPixels = inputDepth * fltHeight * fltWidth;
 
-    typename Architecture::Tensor_t forwardMatrices (1 , nLocalViews, nLocalViewPixels);
-    
-    TDescriptors * convDescriptors = nullptr;
-    TWorkspace   * convWorkspace   = nullptr;
-    
-    TConvLayer<Architecture> *layer = nullptr;
-    Architecture::InitializeConvDescriptors(convDescriptors, 0.0, layer);
-    Architecture::InitializeConvWorkspace(convWorkspace, convDescriptors, params, layer);
+   Tensor_t forwardMatrices (1 , nLocalViews, nLocalViewPixels);
 
-    Architecture::ConvLayerForward(computedOutput, computedDerivatives, input, weights, biases, params,
-                                   EActivationFunction::kIdentity, forwardMatrices,
-                                   (typename Architecture::ConvDescriptors_t &) *convDescriptors,
-                                   (typename Architecture::ConvWorkspace_t &) *convWorkspace);
+   const ActivationOptions_t & activOptions = ActivationOptions_t(EActivationFunction::kIdentity);
+   ActivationWorkspace_t activWorkspace(TParams(), activOptions);
+   ConvolutionWorkspace_t convWorkspace(params, ConvolutionOptions_t());
 
-    for (size_t slice = 0; slice < nRows; slice++) {
-        for (size_t localView = 0; localView < nCols; localView++) {
-            if (expectedOutput(0, slice, localView) != computedOutput(0, slice, localView)) { 
-               std::cout << "Error - computed output different than expected for " << slice 
-               << " , " << localView << std::endl;
-               Architecture::PrintTensor(computedOutput,"computed output tensor");
-               Architecture::PrintTensor(expectedOutput,"expected output tensor");
-               return false;
-            }
-        }
-    }
-    return true;
+   Architecture::ConvLayerForward(computedOutput, computedDerivatives, input, weights, biases, params,
+                                  forwardMatrices, activWorkspace, convWorkspace);
+
+   for (size_t slice = 0; slice < nRows; slice++) {
+      for (size_t localView = 0; localView < nCols; localView++) {
+         if (expectedOutput(0, slice, localView) != computedOutput(0, slice, localView)) { 
+            std::cout << "Error - computed output different than expected for " << slice 
+            << " , " << localView << std::endl;
+            Architecture::PrintTensor(computedOutput,"computed output tensor");
+            Architecture::PrintTensor(expectedOutput,"expected output tensor");
+            return false;
+         }
+      }
+   }
+   return true;
 }
 
 /** Deflatten the 2D tensor A using the Deflatten function and compare it to

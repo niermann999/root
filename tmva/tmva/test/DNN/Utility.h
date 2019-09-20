@@ -25,6 +25,8 @@ namespace DNN {
 template <typename AArchitecture>
 void constructConvNet(TDeepNet<AArchitecture> &net)
 {
+   using ActivationOptions_t  = typename AArchitecture::ActivationOptions_t;
+   
    /* For random selection */
    std::vector<EActivationFunction> ActivationFunctions = {EActivationFunction::kIdentity, EActivationFunction::kRelu,
                                                            EActivationFunction::kSigmoid, EActivationFunction::kTanh};
@@ -36,6 +38,8 @@ void constructConvNet(TDeepNet<AArchitecture> &net)
    size_t strideColsConv1 = 1;
    size_t zeroPaddingHeight1 = 1;
    size_t zeroPaddingWidth1 = 1;
+   size_t dilationHeight = 1;
+   size_t dilationWidth = 1;
 
    //EActivationFunction fConv1 = EActivationFunction::kIdentity;
 
@@ -43,9 +47,10 @@ void constructConvNet(TDeepNet<AArchitecture> &net)
    r.SetSeed(123);
 
    EActivationFunction fConv1 = ActivationFunctions[r.Uniform(ActivationFunctions.size())];
+   const ActivationOptions_t & activOptions1 = ActivationOptions_t(fConv1);
 
    net.AddConvLayer(depth1, filterHeightConv1, filterWidthConv1, strideRowsConv1, strideColsConv1, zeroPaddingHeight1,
-                    zeroPaddingWidth1, fConv1);
+                    zeroPaddingWidth1, dilationHeight, dilationWidth, activOptions1);
 
    std::cout << "added Conv layer " <<  net.GetLayerAt(net.GetDepth() - 1)->GetDepth() << " x " <<  net.GetLayerAt(net.GetDepth() - 1)->GetHeight()
              << " x " << net.GetLayerAt(net.GetDepth() - 1)->GetWidth() << std::endl;
@@ -61,9 +66,10 @@ void constructConvNet(TDeepNet<AArchitecture> &net)
 
    //EActivationFunction fConv2 = EActivationFunction::kIdentity;
    EActivationFunction fConv2 = ActivationFunctions[r.Uniform(ActivationFunctions.size())];
+   const ActivationOptions_t & activOptions2 = ActivationOptions_t(fConv2);
 
    net.AddConvLayer(depth2, filterHeightConv2, filterWidthConv2, strideRowsConv2, strideColsConv2, zeroPaddingHeight2,
-                    zeroPaddingWidth2, fConv2);
+                    zeroPaddingWidth2, dilationHeight, dilationWidth, activOptions2);
 
    std::cout << "added Conv layer " <<  net.GetLayerAt(net.GetDepth() - 1)->GetDepth() << " x " <<  net.GetLayerAt(net.GetDepth() - 1)->GetHeight()
              << " x " << net.GetLayerAt(net.GetDepth() - 1)->GetWidth() << std::endl;
@@ -73,9 +79,10 @@ void constructConvNet(TDeepNet<AArchitecture> &net)
    size_t filterWidthPool = 3;
    size_t strideRowsPool = 1;
    size_t strideColsPool = 1;
-
+   size_t paddingHeight = 0;
+   size_t paddingWidth = 0;
    
-   net.AddMaxPoolLayer(filterHeightPool, filterWidthPool, strideRowsPool, strideColsPool);
+   net.AddMaxPoolLayer(filterHeightPool, filterWidthPool, strideRowsPool, strideColsPool, paddingHeight, paddingWidth);
 
    std::cout << "added MaxPool layer " <<  net.GetLayerAt(net.GetDepth() - 1)->GetDepth() << " x " <<  net.GetLayerAt(net.GetDepth() - 1)->GetHeight()
              << " x " << net.GetLayerAt(net.GetDepth() - 1)->GetWidth() << std::endl;
@@ -95,11 +102,14 @@ void constructConvNet(TDeepNet<AArchitecture> &net)
    EActivationFunction fFC1 = EActivationFunction::kSigmoid;
 
    //EActivationFunction fFC1 = ActivationFunctions[r.Uniform(ActivationFunctions.size())];
-   net.AddDenseLayer(widthFC1, fFC1);
+   const ActivationOptions_t & activOptions3 = ActivationOptions_t(fFC1);
+
+   net.AddDenseLayer(widthFC1, activOptions3);
 
    size_t widthFC2 = 2;
    EActivationFunction fFC2 = EActivationFunction::kIdentity;
-   net.AddDenseLayer(widthFC2, fFC2);
+   const ActivationOptions_t & activOptions4 = ActivationOptions_t(fFC2);
+   net.AddDenseLayer(widthFC2, activOptions4);
 }
 
 /** Construct a linear convolutional neural network with one convolutional layer,
@@ -109,7 +119,8 @@ void constructConvNet(TDeepNet<AArchitecture> &net)
 template <typename AArchitecture>
 void constructLinearConvNet(TDeepNet<AArchitecture> &net)
 {
-   
+   using ActivationOptions_t  = typename AArchitecture::ActivationOptions_t;
+
    size_t depth1 = 2;
    size_t filterHeightConv1 = 3;
    size_t filterWidthConv1 = 3;
@@ -117,11 +128,14 @@ void constructLinearConvNet(TDeepNet<AArchitecture> &net)
    size_t strideColsConv1 = 1;
    size_t zeroPaddingHeight1 = 1;
    size_t zeroPaddingWidth1 = 1;
+   size_t dilationHeight = 1;
+   size_t dilationWidth = 1;
 
    EActivationFunction fConv1 = EActivationFunction::kIdentity;
+   const ActivationOptions_t & activOptions1 = ActivationOptions_t(fConv1);
 
    net.AddConvLayer(depth1, filterHeightConv1, filterWidthConv1, strideRowsConv1, strideColsConv1, zeroPaddingHeight1,
-                    zeroPaddingWidth1, fConv1);
+                    zeroPaddingWidth1, dilationHeight, dilationWidth, activOptions1);
 
    std::cout << "added Conv layer " <<  net.GetLayerAt(net.GetDepth() - 1)->GetDepth() << " x " <<  net.GetLayerAt(net.GetDepth() - 1)->GetHeight()
              << " x " << net.GetLayerAt(net.GetDepth() - 1)->GetWidth() << std::endl;
@@ -137,9 +151,10 @@ void constructLinearConvNet(TDeepNet<AArchitecture> &net)
    size_t zeroPaddingWidth2 = 0;
 
    EActivationFunction fConv2 = EActivationFunction::kIdentity;
+   const ActivationOptions_t & activOptions2 = ActivationOptions_t(fConv2);
 
    net.AddConvLayer(depth2, filterHeightConv2, filterWidthConv2, strideRowsConv2, strideColsConv2, zeroPaddingHeight2,
-                    zeroPaddingWidth2, fConv2);
+                    zeroPaddingWidth2, dilationHeight, dilationWidth, activOptions2);
 
    std::cout << "added Conv layer " <<  net.GetLayerAt(net.GetDepth() - 1)->GetDepth() << " x " <<  net.GetLayerAt(net.GetDepth() - 1)->GetHeight()
              << " x " << net.GetLayerAt(net.GetDepth() - 1)->GetWidth() << std::endl;
@@ -162,9 +177,12 @@ void constructLinearConvNet(TDeepNet<AArchitecture> &net)
    size_t filterWidthPool = 2;
    size_t strideRowsPool = 1;
    size_t strideColsPool = 1;
+   size_t paddingHeight = 0;
+   size_t paddingWidth = 0;
 
+   //const PoolingOptions_t & poolOptions = PoolingOptions_t();
 
-   net.AddMaxPoolLayer(filterHeightPool, filterWidthPool, strideRowsPool, strideColsPool);
+   net.AddMaxPoolLayer(filterHeightPool, filterWidthPool, strideRowsPool, strideColsPool, paddingHeight, paddingWidth);
 
    std::cout << "added MaxPool layer " <<  net.GetLayerAt(net.GetDepth() - 1)->GetDepth() << " x " <<  net.GetLayerAt(net.GetDepth() - 1)->GetHeight()
              << " x " << net.GetLayerAt(net.GetDepth() - 1)->GetWidth() << std::endl;
@@ -180,17 +198,22 @@ void constructLinearConvNet(TDeepNet<AArchitecture> &net)
 
    size_t widthFC1 = 3;
    EActivationFunction fFC1 = EActivationFunction::kIdentity;
-   net.AddDenseLayer(widthFC1, fFC1);
+   const ActivationOptions_t & activOptions3 = ActivationOptions_t(fFC1);
+   net.AddDenseLayer(widthFC1, activOptions3);
 
    size_t widthFC2 = 1;
    EActivationFunction fFC2 = EActivationFunction::kIdentity;
-   net.AddDenseLayer(widthFC2, fFC2);
+   const ActivationOptions_t & activOptions4 = ActivationOptions_t(fFC2);
+   net.AddDenseLayer(widthFC2, activOptions4);
 }
 
 //______________________________________________________________________________
 template <typename AArchitecture>
 void constructMasterSlaveConvNets(TDeepNet<AArchitecture> &master, std::vector<TDeepNet<AArchitecture>> &nets)
 {
+   using ActivationOptions_t  = typename AArchitecture::ActivationOptions_t;
+   using PoolingOptions_t     = typename AArchitecture::PoolingOptions_t;
+
    /* For random selection */
    std::vector<EActivationFunction> ActivationFunctions = {EActivationFunction::kIdentity, EActivationFunction::kRelu,
                                                            EActivationFunction::kSigmoid, EActivationFunction::kTanh};
@@ -203,12 +226,15 @@ void constructMasterSlaveConvNets(TDeepNet<AArchitecture> &master, std::vector<T
    size_t strideColsConv = 1;
    size_t zeroPaddingHeight = 1;
    size_t zeroPaddingWidth = 1;
+   size_t dilationHeight = 1;
+   size_t dilationWidth = 1;
 
    EActivationFunction fConv = ActivationFunctions[rand() % ActivationFunctions.size()];
+   const ActivationOptions_t & activOptions = ActivationOptions_t(fConv);
 
    TConvLayer<AArchitecture> *convLayer =
       master.AddConvLayer(depth, filterHeightConv, filterWidthConv, strideRowsConv, strideColsConv, zeroPaddingHeight,
-                          zeroPaddingWidth, fConv);
+                          zeroPaddingWidth, activOptions);
 
    convLayer->Initialize();
    TConvLayer<AArchitecture> *copyConvLayer = new TConvLayer<AArchitecture>(*convLayer);
@@ -223,10 +249,14 @@ void constructMasterSlaveConvNets(TDeepNet<AArchitecture> &master, std::vector<T
    size_t filterWidthPool = 6;
    size_t strideRowsPool = 1;
    size_t strideColsPool = 1;
+   size_t paddingHeight = 0;
+   size_t paddingWidth = 0;
+
+   const PoolingOptions_t & poolOptions = PoolingOptions_t();
 
    // Add the Max pooling layer
    TMaxPoolLayer<AArchitecture> *maxPoolLayer =
-      master.AddMaxPoolLayer(filterHeightPool, filterWidthPool, strideRowsPool, strideColsPool);
+      master.AddMaxPoolLayer(filterHeightPool, filterWidthPool, strideRowsPool, strideColsPool, paddingHeight, paddingWidth, poolOptions);
    TMaxPoolLayer<AArchitecture> *copyMaxPoolLayer = new TMaxPoolLayer<AArchitecture>(*maxPoolLayer);
 
    // Add the copy to all slave nets
@@ -252,7 +282,8 @@ void constructMasterSlaveConvNets(TDeepNet<AArchitecture> &master, std::vector<T
    // Add Dense Layer
    size_t widthFC1 = 20;
    EActivationFunction fFC1 = ActivationFunctions[rand() % ActivationFunctions.size()];
-   TDenseLayer<AArchitecture> *denseLayer = master.AddDenseLayer(widthFC1, fFC1);
+   const ActivationOptions_t & activOptions1 = ActivationOptions_t(fFC1);
+   TDenseLayer<AArchitecture> *denseLayer = master.AddDenseLayer(widthFC1, activOptions1);
    denseLayer->Initialize();
    TDenseLayer<AArchitecture> *copyDenseLayer = new TDenseLayer<AArchitecture>(*denseLayer);
 
@@ -264,7 +295,8 @@ void constructMasterSlaveConvNets(TDeepNet<AArchitecture> &master, std::vector<T
    // Add the final Dense Layer
    size_t widthFC2 = 5;
    EActivationFunction fFC2 = EActivationFunction::kIdentity;
-   TDenseLayer<AArchitecture> *finalDenseLayer = master.AddDenseLayer(widthFC2, fFC2);
+   const ActivationOptions_t & activOptions2 = ActivationOptions_t(fFC2);
+   TDenseLayer<AArchitecture> *finalDenseLayer = master.AddDenseLayer(widthFC2, activOptions2);
    finalDenseLayer->Initialize();
    TDenseLayer<AArchitecture> *copyFinalDenseLayer = new TDenseLayer<AArchitecture>(*finalDenseLayer);
 

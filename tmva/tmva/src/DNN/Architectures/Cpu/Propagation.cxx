@@ -136,7 +136,7 @@ void TCpu<AFloat>::AddRowWise(TCpuMatrix<AFloat> &output, const TCpuMatrix<AFloa
 template <typename AFloat>
 void TCpu<AFloat>::Backward(TCpuTensor<AFloat> &activationGradientsBackward, TCpuMatrix<AFloat> &weightGradients,
                             TCpuMatrix<AFloat> &biasGradients, const TCpuTensor<AFloat> &df,
-                            const TCpuTensor<AFloat> &activationGradients, const TCpuMatrix<AFloat> &weights,
+                            const TCpuTensor<AFloat> & /*activationGradients*/, const TCpuMatrix<AFloat> &weights,
                             const TCpuTensor<AFloat> &activationsBackward)
 {
    // Compute element-wise product.
@@ -362,10 +362,13 @@ void TCpu<AFloat>::ConvLayerForward(TCpuTensor<AFloat> & output,
                                     TCpuTensor<AFloat> & inputActivationFunc,
                                     const TCpuTensor<AFloat> &input,
                                     const TCpuMatrix<AFloat> &weights, const TCpuMatrix<AFloat> & biases,
-                                    const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
+                                    const DNN::CNN::TConvParams & params, 
+                                    //EActivationFunction activFunc,
                                     TCpuTensor<AFloat> & /*  */,
-                                    const ConvDescriptors_t & /*descriptors*/,
-                                    ConvWorkspace_t & /*workspace*/)
+                                    const ActivationWorkspace_t & activationWorkspace,
+                                    const ConvolutionWorkspace_t & /*convWorkspace*/)
+                                    //const ConvDescriptors_t & /*descriptors*/,
+                                    //ConvWorkspace_t & /*workspace*/)
 {
    size_t height = calculateDimension(params.inputHeight, params.filterHeight, params.paddingHeight, params.strideRows);
    size_t width = calculateDimension(params.inputWidth, params.filterWidth, params.paddingWidth, params.strideCols);
@@ -407,7 +410,7 @@ void TCpu<AFloat>::ConvLayerForward(TCpuTensor<AFloat> & output,
    Copy(inputActivationFunc, output);
 
    //evaluate<TCpu<AFloat>>(output, activFunc);
-   ActivationFunctionForward(output, activFunc, DummyActivationDescriptor());
+   ActivationFunctionForward(output, activationWorkspace/*activFunc,*//*DummyActivationDescriptor()*/);
 }
 
 //____________________________________________________________________________
@@ -419,9 +422,11 @@ void TCpu<AFloat>::ConvLayerBackward(TCpuTensor<AFloat> &activationGradientsBack
                                      const TCpuMatrix<AFloat> &weights,
                                      const TCpuTensor<AFloat> &activationsBackward,
                                      const Tensor_t & outputTensor,
-                                     EActivationFunction activFunc,
-                                     const ConvDescriptors_t & /*descriptors*/,
-                                     ConvWorkspace_t & /*workspace*/,
+                                     //EActivationFunction activFunc,
+                                     const ActivationWorkspace_t & activationWorkspace,
+                                     const ConvolutionWorkspace_t & /*convWorkspace*/,
+                                     //const ConvDescriptors_t & /*descriptors*/,
+                                     //ConvWorkspace_t & /*workspace*/,
                                      size_t batchSize,   size_t inputHeight, 
                                      size_t inputWidth,  size_t depth, 
                                      size_t height,      size_t width,
@@ -438,7 +443,7 @@ void TCpu<AFloat>::ConvLayerBackward(TCpuTensor<AFloat> &activationGradientsBack
    //  put resulting dx of activation in activationgradients
    Tensor_t df(activationGradients.GetShape() );   // this is a deep copy, could be put as data member of class
    ActivationFunctionBackward(df, outputTensor, activationGradients, inputActivationFunc, 
-                              activFunc, DummyActivationDescriptor() );
+                              activationWorkspace/*activFunc,*//*DummyActivationDescriptor()*/ );
 
    // Hadamard(df, activationGradients);
    
@@ -639,8 +644,9 @@ void TCpu<AFloat>::CalculateConvBiasGradients(TCpuMatrix<AFloat> &biasGradients,
 //____________________________________________________________________________
 template <typename AFloat>
 void TCpu<AFloat>::Downsample(TCpuTensor<AFloat> &tA, TCpuTensor<AFloat> &tB, const TCpuTensor<AFloat> &tC,
-                              const PoolingDescriptors_t & /*descriptors*/,
-                              PoolingWorkspace_t & /*workspace*/,
+                              const PoolingWorkspace_t & /*poolingWorkspace*/,
+                              //const PoolingDescriptors_t & /*descriptors*/,
+                              //PoolingWorkspace_t & /*workspace*/,
                               size_t imgHeight, size_t imgWidth, size_t fltHeight, size_t fltWidth, size_t strideRows,
                               size_t strideCols)
 {
@@ -688,8 +694,9 @@ void TCpu<AFloat>::MaxPoolLayerBackward(TCpuTensor<AFloat> &activationGradientsB
                                         const TCpuTensor<AFloat> &indexMatrix,
                                         const TCpuTensor<AFloat> & /*inputActivation*/,
                                         const TCpuTensor<AFloat> & /*outputTensor*/,
-                                        const PoolingDescriptors_t & /*descriptors*/,
-                                        PoolingWorkspace_t & /*workspace*/,
+                                        const PoolingWorkspace_t & /*poolingWorkspace*/,
+                                        //const PoolingDescriptors_t & /*descriptors*/,
+                                        //PoolingWorkspace_t & /*workspace*/,
                                         size_t /* imgHeight */,
                                         size_t /* imgWidth */,
                                         size_t /* fltHeight */,

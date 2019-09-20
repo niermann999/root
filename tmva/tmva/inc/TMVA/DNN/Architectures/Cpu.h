@@ -36,7 +36,7 @@ namespace TMVA
 namespace DNN
 {
    //class EActivationFunction;
- struct DummyActivationDescriptor {};
+ /*struct DummyActivationDescriptor {};
  struct DummyFilterDescriptor {};
  struct DummyConvolutionDescriptor {};
  struct DummyDropoutDescriptor {};
@@ -46,7 +46,7 @@ namespace DNN
  struct DummyConvolutionBwdFilterAlgo {};
  struct DummyDataType {};
  
- struct DummyEmptyDescriptor {};
+ struct DummyEmptyDescriptor {};*/
 
 /** The TCpu architecture class.
  *
@@ -68,29 +68,68 @@ public:
    using HostBuffer_t   = TCpuBuffer<AReal>;
    using DeviceBuffer_t = TCpuBuffer<AReal>;
 
-   using ActivationDescriptor_t  = DummyActivationDescriptor;
-   using ConvolutionDescriptor_t = DummyConvolutionDescriptor;
-   using FilterDescriptor_t      = DummyFilterDescriptor;
-   using DropoutDescriptor_t     = DummyDropoutDescriptor;
-   //using OpTensorDescriptor_t    = DummyOpTensorDescriptor;
-   using PoolingDescriptor_t     = DummyPoolingDescriptor;
-   //using ReductionDescriptor_t   = DummyReduceTensorDescriptor;
-   using AlgorithmForward_t      = DummyConvolutionFwdAlgo;
-   using AlgorithmBackward_t     = DummyConvolutionBwdDataAlgo;
-   using AlgorithmHelper_t       = DummyConvolutionBwdFilterAlgo;
-   using AlgorithmDataType_t     = DummyDataType;
+   typedef struct TActivationOptions : public TOptions {
+      EActivationFunction activationFunction;
+
+      TActivationOptions(EActivationFunction _activationFunction = EActivationFunction::kTanh)
+                        : activationFunction(_activationFunction)
+      {}
+   } TActivationOptions;
+
+   typedef struct TBatchNormOptions : public TOptions {} TBatchNormOptions;
+   typedef struct TConvOptions      : public TOptions {} TConvOptions;
+   typedef struct TPoolingOptions   : public TOptions {} TPoolingOptions;
    
-   using EmptyDescriptor_t       = DummyEmptyDescriptor;        // Used if a descriptor is not needed in a class
+   using ActivationOptions_t  = TActivationOptions;
+   using BatchNormOptions_t   = TBatchNormOptions;
+   using ConvolutionOptions_t = TConvOptions;
+   using PoolingOptions_t     = TPoolingOptions;
+
+   /** Empty structures that hold descriptors and on-device memory for the execution of cuDNN 
+    *  function calls only.*/
+   typedef struct TActivationFnctWorkspace : public TWorkspace {
+      const ActivationOptions_t & activOptions;
+      EActivationFunction activationFunction;
+
+      TActivationFnctWorkspace() = default;
+      TActivationFnctWorkspace(const TParams & params, const TOptions & userOptions) : TWorkspace(params, userOptions),
+                               activOptions(static_cast<const ActivationOptions_t &>(userOptions)),
+                               activationFunction(activOptions.activationFunction) {}
+                               
+      // Make derived class non-virtual
+      void DeepCopy(TWorkspace & A, const TWorkspace & B) override {
+         auto & newWorkspace = static_cast<TActivationFnctWorkspace &>(A);
+         auto & oldWorkspace = static_cast<const TActivationFnctWorkspace &>(B);
+
+         newWorkspace.activationFunction = oldWorkspace.activationFunction;
+      }
+   } TActivationFnctWorkspace;
+
+   typedef struct TBatchNormWorkspace : public TWorkspace {
+      using TWorkspace::TWorkspace;
+      void DeepCopy(TWorkspace & /*New*/, const TWorkspace & /*Old*/) override {}
+   } TBatchNormWorkspace;
+
+   typedef struct TConvLayerWorkspace : public TWorkspace {
+      using TWorkspace::TWorkspace;
+      void DeepCopy(TWorkspace & /*New*/, const TWorkspace & /*Old*/) override {}
+   } TConvLayerWorkspace;
+
+   typedef struct TDropoutWorkspace : public TWorkspace {
+      using TWorkspace::TWorkspace;
+      void DeepCopy(TWorkspace & /*New*/, const TWorkspace & /*Old*/) override {}
+   } TDropoutWorkspace;
    
-   /*using BNormLayer_t            = DNN::TBatchNormLayer<TCpu<AReal>>;
-   using BNormDescriptors_t      = CNN::TCNNDescriptors<BNormLayer_t>;
-   using BNormWorkspace_t        = CNN::TCNNWorkspace<BNormLayer_t>;*/
-   using ConvLayer_t             = CNN::TConvLayer<TCpu<AReal>>;
-   using ConvDescriptors_t       = CNN::TCNNDescriptors<ConvLayer_t>;
-   using ConvWorkspace_t         = CNN::TCNNWorkspace<ConvLayer_t>;
-   using PoolingLayer_t          = CNN::TMaxPoolLayer<TCpu<AReal>>;
-   using PoolingDescriptors_t    = CNN::TCNNDescriptors<PoolingLayer_t>;
-   using PoolingWorkspace_t      = CNN::TCNNWorkspace<PoolingLayer_t>;
+   typedef struct TPoolingWorkspace : public TWorkspace {
+      using TWorkspace::TWorkspace;
+      void DeepCopy(TWorkspace & /*New*/, const TWorkspace & /*Old*/) override {}
+   } TPoolingWorkspace;
+
+   using ActivationWorkspace_t  = TActivationFnctWorkspace;
+   using BatchNormWorkspace_t   = TBatchNormWorkspace;
+   using ConvolutionWorkspace_t = TConvLayerWorkspace;
+   using DropoutWorkspace_t     = TDropoutWorkspace;
+   using PoolingWorkspace_t     = TPoolingWorkspace;
 
    static TMVA::Experimental::MemoryLayout GetTensorLayout() { return TMVA::Experimental::MemoryLayout::ColumnMajor; }
 
@@ -106,7 +145,7 @@ public:
    # if 0
    static void InitializeBNormDescriptors(TDescriptors * & /*descriptors*/, 
                                           BNormLayer_t */*L = nullptr*/) {}
-   # endif
+   
    static void InitializeConvDescriptors(TDescriptors * & /*descriptors*/, double /*coef = 0.0*/, 
                                          ConvLayer_t */*L = nullptr*/) {}
    static void InitializePoolDescriptors(TDescriptors * & /*descriptors*/,
@@ -131,6 +170,7 @@ public:
    static void FreePoolWorkspace(TWorkspace * & /*workspace*/, PoolingLayer_t */*L = nullptr*/) {}
 
    static void ReleaseDescriptor(ActivationDescriptor_t &  /* activationDescr */) {}
+   # endif
    // // Utility function to convert from a Matrix to a Tensor
    // static Tensor_t  MatrixToTensor(Matrix_t & A) { 
    //    return Tensor_t(A.GetRawDataPointer(), Shape_t({A.GetNrows(), A.GetNcols() }), RTensor::MemoryLayout::ColumnMajor);
@@ -240,16 +280,15 @@ public:
     evaluate<TCpu<AReal>>(tA,f);
    }*/
 
-   static void ActivationFunctionForward(Tensor_t & X, EActivationFunction activFunct,
-                          const ActivationDescriptor_t activationDescr,
-                          const double coef = 0.0, const Scalar_t alpha = 1, 
-                          const Scalar_t beta = 0);
+   static void ActivationFunctionForward(Tensor_t & X,
+                                         const ActivationWorkspace_t & activationWorkspace,
+                                         const double coef = 0.0, const Scalar_t alpha = 1, 
+                                         const Scalar_t beta = 0);
 
    /** Computes the gradient of the activation function */
    static void ActivationFunctionBackward(Tensor_t & dX, const Tensor_t & Y, 
-                                          const Tensor_t & dY,  const Tensor_t & X, 
-                                          EActivationFunction activFunct,
-                                          const ActivationDescriptor_t activationDescr,
+                                          const Tensor_t & dY,  const Tensor_t & X,
+                                          const ActivationWorkspace_t & activationWorkspace,
                                           const Scalar_t alpha = 1, 
                                           const Scalar_t beta = 0);
 
@@ -398,20 +437,18 @@ public:
 
    /** Apply dropout with activation probability \p p to the given
     *  tensor \p A and scale the result by reciprocal of \p p. */
-   static void DropoutForward(Tensor_t & A, 
-                              TDescriptors * descriptors,
-                              TWorkspace   * workspace, 
+   static void DropoutForward(Tensor_t & A,
+                              const DropoutWorkspace_t & /*dropoutWorkspace*/,
                               Scalar_t p);
 
    static void DropoutForward(Matrix_t & A, Scalar_t p) { 
       Tensor_t tA(A);
-      DropoutForward( tA, static_cast<TDescriptors *> (nullptr), static_cast<TWorkspace *> (nullptr), p );
+      DropoutForward( tA, {}, p );
    }
 
    // Only needed for cuDNN
-   static void DropoutBackward(Tensor_t & A,                               
-                               TDescriptors * descriptors,
-                               TWorkspace   * workspace) {}
+   static void DropoutBackward(Tensor_t & /*A*/,
+                               const DropoutWorkspace_t & /*dropoutWorkspace*/) {}
    ///@}
 
    //____________________________________________________________________________
@@ -519,18 +556,19 @@ public:
    ///@}
 
    /** Dummy placeholder - preparation is currently only required for the CUDA architecture. */
-   static void PrepareInternals(Tensor_t &) {}
+   static void PrepareInternals(Tensor_t & /*output*/, Tensor_t & /*inputActivation*/, Matrix_t & /*weights*/,
+                                Matrix_t & /*biases*/, Matrix_t & /*weightGrads*/, Matrix_t & /*biasGrads*/, 
+                                Tensor_t & /*activationGrads*/, const DNN::CNN::TConvParams & /*params*/) {}
 
    /** Forward propagation in the Convolutional layer */
    static void ConvLayerForward(Tensor_t & output,
                                 Tensor_t & inputActivationFunc,
                                 const Tensor_t &input,
                                 const Matrix_t &weights, const Matrix_t & biases,
-                                const DNN::CNN::TConvParams & params, EActivationFunction activFunc,
+                                const DNN::CNN::TConvParams & params,
                                 Tensor_t & /* inputPrime */,
-                                const ConvDescriptors_t & /*descriptors*/,   // Empty struct for cuda architecture   
-                                ConvWorkspace_t & /*workspace*/);       // Empty struct for cuda architecture
-                                //void * cudnnWorkspace = nullptr);          // Remains nullptr for cuda architecture
+                                const ActivationWorkspace_t & activationWorkspace,
+                                const ConvolutionWorkspace_t & /*convWorkspace*/);
 
    /** @name Backward Propagation in Convolutional Layer
     */
@@ -551,9 +589,8 @@ public:
                                  const Matrix_t &weights,
                                  const Tensor_t &activationBackward,
                                  const Tensor_t &  outputTensor,
-                                 EActivationFunction activFunc,
-                                 const ConvDescriptors_t & /*descriptors*/,
-                                 ConvWorkspace_t & /*workspace*/,
+                                 const ActivationWorkspace_t & activationWorkspace,
+                                 const ConvolutionWorkspace_t & /*convWorkspace*/,
                                  size_t batchSize,   size_t inputHeight, 
                                  size_t inputWidth,  size_t depth, 
                                  size_t height,      size_t width,
@@ -596,8 +633,7 @@ public:
     * operation, such that the winning indices are stored in matrix
     * \p B. */
    static void Downsample(Tensor_t &A, Tensor_t &B, const Tensor_t &C,
-                          const PoolingDescriptors_t & /*descriptors*/,
-                          PoolingWorkspace_t & /*workspace*/,
+                          const PoolingWorkspace_t & /*poolingWorkspace*/,
                           size_t imgHeight, size_t imgWidth, 
                           size_t fltHeight, size_t fltWidth, 
                           size_t strideRows, size_t strideCols);
@@ -615,8 +651,7 @@ public:
                                     const Tensor_t &indexMatrix,
                                     const Tensor_t & /*inputActivation*/,
                                     const Tensor_t & /*outputTensor*/,
-                                    const PoolingDescriptors_t & /*descriptors*/,
-                                    PoolingWorkspace_t & /*workspace*/,
+                                    const PoolingWorkspace_t & /*poolingWorkspace*/,
                                     size_t imgHeight,
                                     size_t imgWidth,
                                     size_t fltHeight,

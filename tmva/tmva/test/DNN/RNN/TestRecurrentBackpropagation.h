@@ -100,7 +100,9 @@ bool testRecurrentBackpropagation(size_t timeSteps, size_t batchSize, size_t sta
    using RNNLayer_t = TBasicRNNLayer<Architecture>; 
    using DenseLayer_t = TDenseLayer<Architecture>; 
    using Net_t      = TDeepNet<Architecture>;
-   using Scalar_t = typename Architecture::Scalar_t;
+   using Scalar_t   = typename Architecture::Scalar_t;
+
+   using ActivationOptions_t  = typename Architecture::ActivationOptions_t;
 
    //std::vector<Matrix_t<Double_t>> XRef(batchSize, Matrix_t<Double_t>(timeSteps, inputSize));    // B x T x D
    Tensor_t XArch (batchSize, timeSteps, inputSize); // B x T x D
@@ -167,8 +169,10 @@ bool testRecurrentBackpropagation(size_t timeSteps, size_t batchSize, size_t sta
    DenseLayer_t * dlayer1 = nullptr;
    DenseLayer_t * dlayer2 = nullptr;
    if (addDenseLayer) {
-      dlayer1 = rnn.AddDenseLayer(10, TMVA::DNN::EActivationFunction::kTanh);
-      dlayer2 = rnn.AddDenseLayer(1, TMVA::DNN::EActivationFunction::kIdentity);
+      const ActivationOptions_t & activOptions1 = ActivationOptions_t(TMVA::DNN::EActivationFunction::kTanh);
+      const ActivationOptions_t & activOptions2 = ActivationOptions_t(TMVA::DNN::EActivationFunction::kIdentity);
+      dlayer1 = rnn.AddDenseLayer(10, activOptions1);
+      dlayer2 = rnn.AddDenseLayer(1, activOptions2);
    }
 
 

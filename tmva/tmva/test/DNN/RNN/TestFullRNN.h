@@ -73,6 +73,8 @@ auto testFullRNN(size_t batchSize, size_t stateSize,
 {
    using Matrix_t   = typename Architecture::Matrix_t;
    using Tensor_t   = typename Architecture::Tensor_t;
+
+   using ActivationOptions_t  = typename Architecture::ActivationOptions_t;
    
    // using RNNLayer_t = TBasicRNNLayer<Architecture>;
    // using FCLayer_t  = TDenseLayer<Architecture>;
@@ -107,7 +109,8 @@ auto testFullRNN(size_t batchSize, size_t stateSize,
    //    FCLayer_t* classifier = rnn.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
    rnn.AddBasicRNNLayer(stateSize, inputSize, timeSteps, false);
    rnn.AddReshapeLayer(1, 1, stateSize, true);
-   rnn.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
+   const ActivationOptions_t & activOptions = ActivationOptions_t(EActivationFunction::kIdentity);
+   rnn.AddDenseLayer(outputSize, activOptions);
 
    Matrix_t W(batchSize, 1);
    for (size_t i = 0; i < batchSize; ++i) W(i, 0) = 1.0;
@@ -149,6 +152,8 @@ auto testFullRNN2(size_t batchSize, size_t stateSize,
    using Net_t      = TDeepNet<Architecture>;
    using Scalar_t   = typename Architecture::Scalar_t;
 
+   using ActivationOptions_t  = typename Architecture::ActivationOptions_t;
+
    bool saveResult = false; 
 
    TRandom3 rndm(seed); 
@@ -188,8 +193,10 @@ auto testFullRNN2(size_t batchSize, size_t stateSize,
    //    FCLayer_t* classifier = rnn.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
    rnn.AddBasicRNNLayer(stateSize, inputSize, timeSteps, false);
    rnn.AddReshapeLayer(1, 1, timeSteps*stateSize, true);
-   rnn.AddDenseLayer(10, EActivationFunction::kTanh);
-   rnn.AddDenseLayer(1, EActivationFunction::kIdentity);
+   const ActivationOptions_t & activOptions1 = ActivationOptions_t(EActivationFunction::kTanh);
+   const ActivationOptions_t & activOptions2 = ActivationOptions_t(EActivationFunction::kIdentity);
+   rnn.AddDenseLayer(10, activOptions1);
+   rnn.AddDenseLayer(1, activOptions2);
 
    Matrix_t W(batchSize, 1);
    for (size_t i = 0; i < batchSize; ++i) W(i, 0) = 1.0;

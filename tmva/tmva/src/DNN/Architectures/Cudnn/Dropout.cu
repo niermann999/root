@@ -23,49 +23,39 @@ namespace DNN  {
 // FIXME: Do testing!!!
 //____________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::DropoutForward(TCudaTensor<AFloat> &A, 
-                                    TDescriptors * descriptors,
-                                    TWorkspace   * workspace, 
+void TCudnn<AFloat>::DropoutForward(TCudaTensor<AFloat> &A,
+                                    const DropoutWorkspace_t & dropoutWorkspace, 
                                     AFloat /*dropoutProbability*/)
 {
-    if (!workspace || !descriptors) return;
-    auto poolWorkspace = static_cast<ConvWorkspace_t *>(workspace);
-    auto poolDescriptors = static_cast<PoolingDescriptors_t *>(descriptors);
-
     //TCudaTensor<AFloat> tmp (A);
 
     // Write the output into A      
     CUDNNCHECK(cudnnDropoutForward(A.GetCudnnHandle(),
-                                   poolDescriptors->HelperDescriptor,
+                                   dropoutWorkspace.dropoutDescr,
                                    A.GetTensorDescriptor(),// use tmp, if inplace op fails
                                    A.GetDataPointer(),
                                    A.GetTensorDescriptor(),
                                    A.GetDataPointer(),
-                                   poolWorkspace->HelperWorkspace,
-                                   poolWorkspace->HelperWorkspaceSize));
+                                   dropoutWorkspace.dropoutReserveSpace,
+                                   dropoutWorkspace.dropoutReserveSpaceSize));
 }
 
 //____________________________________________________________________________
 template<typename AFloat>
 void TCudnn<AFloat>::DropoutBackward(TCudaTensor<AFloat> &A,
-                                     TDescriptors * descriptors,
-                                     TWorkspace   * workspace)
+                                     const DropoutWorkspace_t & dropoutWorkspace)
 {
-    if (!workspace || !descriptors) return;
-    auto poolWorkspace = static_cast<ConvWorkspace_t *>(workspace);
-    auto poolDescriptors = static_cast<PoolingDescriptors_t *>(descriptors);
-
     //TCudaTensor<AFloat> tmp (A);
 
     // Write the output into A
     CUDNNCHECK(cudnnDropoutBackward(A.GetCudnnHandle(),
-                                   poolDescriptors->HelperDescriptor,
-                                   A.GetTensorDescriptor(),// use tmp, if inplace op fails
-                                   A.GetDataPointer(),
-                                   A.GetTensorDescriptor(),
-                                   A.GetDataPointer(),
-                                   poolWorkspace->HelperWorkspace,
-                                   poolWorkspace->HelperWorkspaceSize));
+                                    dropoutWorkspace.dropoutDescr,
+                                    A.GetTensorDescriptor(),// use tmp, if inplace op fails
+                                    A.GetDataPointer(),
+                                    A.GetTensorDescriptor(),
+                                    A.GetDataPointer(),
+                                    dropoutWorkspace.dropoutStatesSpace,
+                                    dropoutWorkspace.dropoutStatesSpaceSize));
 }
 
 } // namespace DNN

@@ -133,6 +133,7 @@ template<typename Architecture>
 bool testDownsample1_cudnn()
 {
     using Matrix_t     = typename Architecture::Matrix_t;
+    using Scalar_t     = typename Architecture::Scalar_t;
     using HostBuffer_t = typename Architecture::HostBuffer_t;
 
     double imgTest1[][20] = {
@@ -165,19 +166,21 @@ bool testDownsample1_cudnn()
     size_t fltWidthTest1 = 2;
     size_t strideRowsTest1 = 2;
     size_t strideColsTest1 = 1;
+    Scalar_t dropoutProb = 0.5;
+    size_t padHeight = 0;
+    size_t padWidth = 0;
 
     std::vector<size_t> inputShape {1, imgDepthTest1, imgHeightTest1, imgWidthTest1};
     HostBuffer_t input_hostbuffer(imgDepthTest1 * imgHeightTest1 * imgWidthTest1);
     for (size_t i = 0; i < imgDepthTest1; i++) {
-       for (size_t j = 0; j < imgHeightTest1 * imgWidthTest1; j++) {
-          input_hostbuffer[i*imgHeightTest1 * imgWidthTest1 + j] = imgTest1[i][j];
-       }
+        for (size_t j = 0; j < imgHeightTest1 * imgWidthTest1; j++) {
+            input_hostbuffer[i*imgHeightTest1 * imgWidthTest1 + j] = imgTest1[i][j];
+        }
     }
     Matrix_t input(input_hostbuffer, inputShape, MemoryLayout::RowMajor, 0, 0);
 
     size_t height = calculateDimension(imgHeightTest1, fltHeightTest1, strideRowsTest1);
     size_t width = calculateDimension(imgWidthTest1, fltWidthTest1, strideColsTest1);
-
     std::vector<size_t> ouputShape {1, imgDepthTest1, height, width};
     HostBuffer_t output_hostbuffer(imgDepthTest1 * height * width);
     for (size_t i = 0; i < imgDepthTest1; i++) {
@@ -190,40 +193,31 @@ bool testDownsample1_cudnn()
     Matrix_t computedOutput(computedOutput_hostbuffer, ouputShape, MemoryLayout::RowMajor, 0, 0);
     // Not needed for cuDNN
     Matrix_t idx;
-
+    
     TMaxPoolLayer<TCudnn<Double_t>> poolLayer (1, imgDepthTest1, imgHeightTest1, imgWidthTest1,
                                                fltHeightTest1, fltWidthTest1, strideRowsTest1,
-                                               strideColsTest1, 0.5);
+                                               strideColsTest1, dropoutProb, padHeight, padWidth);
+    
+    auto& dropoutWorkspace = poolLayer.GetDropoutWorkspace();
+    auto& poolWorkspace    = poolLayer.GetPoolingWorkspace();
 
-    auto* poolDescriptors = poolLayer.GetDescriptors();
-    auto* poolWorkspace   = poolLayer.GetWorkspace();
+    Architecture::Downsample(computedOutput, idx, input, poolWorkspace,
+                             imgHeightTest1, imgWidthTest1, fltHeightTest1, fltWidthTest1, 
+                             strideRowsTest1, strideColsTest1);
+    TCudnn<Double_t>::PrintTensor(computedOutput, "after downsampling");
+    bool status = computedOutput.isEqual(expectedOutput);
 
     TCudnn<Double_t>::PrintTensor(input, "input before dropout");
-    Architecture::DropoutForward(input, poolDescriptors, poolWorkspace,
-                                 poolLayer.GetDropoutProbability());
-
+    Architecture::DropoutForward(input, dropoutWorkspace, dropoutProb);
     TCudnn<Double_t>::PrintTensor(input, "input after 1 dropout");
 
-    Architecture::DropoutForward(input, poolDescriptors, poolWorkspace,
-                                 poolLayer.GetDropoutProbability());
-
+    Architecture::DropoutForward(input, dropoutWorkspace, dropoutProb);
     TCudnn<Double_t>::PrintTensor(input, "input after 2 dropout");
 
-    Architecture::DropoutBackward(input, poolDescriptors, poolWorkspace);
-
+    Architecture::DropoutBackward(input, dropoutWorkspace);
     TCudnn<Double_t>::PrintTensor(input, "input after dropout backward");
 
-    Architecture::Downsample(computedOutput, idx, input, 
-                            (typename Architecture::PoolingDescriptors_t &) *poolDescriptors,
-                            (typename Architecture::PoolingWorkspace_t &) *poolWorkspace,
-                            imgHeightTest1, imgWidthTest1, fltHeightTest1, fltWidthTest1, 
-                            strideRowsTest1, strideColsTest1);
-
-    TCudnn<Double_t>::PrintTensor(computedOutput, "after downsampling");
-
-    /*bool status = computedOutput.isEqual(expectedOutput);
-    return status;*/
-    return true;
+    return status;
 }
 
 /*************************************************************************
@@ -284,7 +278,8 @@ bool testDownsample2()
 template<typename Architecture>
 bool testDownsample2_cudnn()
 {
-    using Matrix_t = typename Architecture::Matrix_t;
+    using Matrix_t     = typename Architecture::Matrix_t;
+    using Scalar_t     = typename Architecture::Scalar_t;
     using HostBuffer_t = typename Architecture::HostBuffer_t;
 
     double imgTest2[][36] = {{200, 79, 69,  58,  98,  168, 49,  230, 21,  141, 218, 38, 72, 224, 14,  65,  147, 105,
@@ -301,6 +296,9 @@ bool testDownsample2_cudnn()
     size_t fltWidthTest2 = 3;
     size_t strideRowsTest2 = 1;
     size_t strideColsTest2 = 3;
+    Scalar_t dropoutProb = 0.0;
+    size_t padHeight = 0;
+    size_t padWidth = 0;
 
     std::vector<size_t> inputShape {1, imgDepthTest2, imgHeightTest2, imgWidthTest2};
     HostBuffer_t input_hostbuffer(imgDepthTest2 * imgHeightTest2 * imgWidthTest2);
@@ -313,7 +311,6 @@ bool testDownsample2_cudnn()
 
     size_t height = calculateDimension(imgHeightTest2, fltHeightTest2, strideRowsTest2);
     size_t width = calculateDimension(imgWidthTest2, fltWidthTest2, strideColsTest2);
-
     std::vector<size_t> ouputShape {1, imgDepthTest2, height, width};
     HostBuffer_t output_hostbuffer(imgDepthTest2 * height * width);
     for (size_t i = 0; i < imgDepthTest2; i++) {
@@ -329,18 +326,15 @@ bool testDownsample2_cudnn()
 
     TMaxPoolLayer<TCudnn<Double_t>> poolLayer (1, imgDepthTest2, imgHeightTest2, imgWidthTest2,
                                                fltHeightTest2, fltWidthTest2, strideRowsTest2,
-                                               strideColsTest2, 0.0);
+                                               strideColsTest2, dropoutProb, padHeight, padWidth);
+    auto& poolWorkspace   = poolLayer.GetPoolingWorkspace();
 
-    auto& poolDescriptors = static_cast<TMVA::DNN::TCudnn<Double_t>::PoolingDescriptors_t &> (*poolLayer.GetDescriptors());
-    auto& poolWorkspace   = static_cast<TMVA::DNN::TCudnn<Double_t>::PoolingWorkspace_t &> (*poolLayer.GetWorkspace());
+    Architecture::Downsample(computedOutput, idx, input, poolWorkspace,
+                             imgHeightTest2, imgWidthTest2, fltHeightTest2, fltWidthTest2, 
+                             strideRowsTest2, strideColsTest2);
 
-    Architecture::Downsample(computedOutput, idx, input, 
-                            (typename Architecture::PoolingDescriptors_t &) poolDescriptors,
-                            (typename Architecture::PoolingWorkspace_t &) poolWorkspace,
-                            imgHeightTest2, imgWidthTest2, fltHeightTest2, fltWidthTest2, 
-                            strideRowsTest2, strideColsTest2);
-
-    //TCudnn<Double_t>::PrintTensor(computedOutput, "FInal output");
+    //TCudnn<Double_t>::PrintTensor(expectedOutput, "Expected output");
+    //TCudnn<Double_t>::PrintTensor(computedOutput, "Computed output");
     bool status = computedOutput.isEqual(expectedOutput);
     return status;
 }
@@ -429,7 +423,8 @@ bool testBackward1() {
 template<typename Architecture>
 bool testBackward1_cudnn() {
 
-    using Matrix_t = typename Architecture::Matrix_t;
+    using Matrix_t     = typename Architecture::Matrix_t;
+    using Scalar_t     = typename Architecture::Scalar_t;
     using HostBuffer_t = typename Architecture::HostBuffer_t;
 
     // Do a forward pass first to get x and y
@@ -443,6 +438,9 @@ bool testBackward1_cudnn() {
     size_t frameWidth = 3;
     size_t strideRows = 1;
     size_t strideCols = 3;
+    Scalar_t dropoutProb = 0.0;
+    size_t padHeight = 0;
+    size_t padWidth = 0;
 
     std::vector<size_t> inputActivationShape {1, depth, inHeight, inWidth};
     HostBuffer_t inputActivation_hostbuffer(depth * inHeight * inWidth);
@@ -455,7 +453,6 @@ bool testBackward1_cudnn() {
 
     size_t height = calculateDimension(inHeight, frameHeight, strideRows);
     size_t width = calculateDimension(inWidth, frameWidth, strideCols);
-
     std::vector<size_t> ouputActivationShape {1, depth, height, width};
     HostBuffer_t outputActivation_hostbuffer(depth * height * width);
     Matrix_t outputActivation(outputActivation_hostbuffer, ouputActivationShape, MemoryLayout::RowMajor, 0, 0);
@@ -464,17 +461,12 @@ bool testBackward1_cudnn() {
 
     TMaxPoolLayer<TCudnn<Double_t>> poolLayer (1, depth, inHeight, inWidth,
                                                frameHeight, frameWidth, strideRows,
-                                               strideCols, 0.0);
+                                               strideCols, dropoutProb, padHeight, padWidth);
+    auto& poolWorkspace   = poolLayer.GetPoolingWorkspace();
 
-    auto& poolDescriptors = static_cast<TMVA::DNN::TCudnn<Double_t>::PoolingDescriptors_t &> (*poolLayer.GetDescriptors());
-    auto& poolWorkspace   = static_cast<TMVA::DNN::TCudnn<Double_t>::PoolingWorkspace_t &> (*poolLayer.GetWorkspace());
-
-    Architecture::Downsample(outputActivation, idxForward, inputActivation, 
-                            (typename Architecture::PoolingDescriptors_t &) poolDescriptors,
-                            (typename Architecture::PoolingWorkspace_t &) poolWorkspace,
-                            inHeight, inWidth, frameHeight, frameWidth, 
-                            strideRows, strideCols);
-
+    Architecture::Downsample(outputActivation, idxForward, inputActivation, poolWorkspace,
+                             inHeight, inWidth, frameHeight, frameWidth, 
+                             strideRows, strideCols);
 
     /* Activations of the previous layer. These will be computed by the backward pass. */
     double expected[][36] =
@@ -502,9 +494,9 @@ bool testBackward1_cudnn() {
     std::vector<size_t> expectedShape {1, depth, inHeight, inWidth};
     HostBuffer_t expected_hostbuffer(depth * inHeight * inWidth);
     for (size_t i = 0; i < depth; i++) {
-       for (size_t j = 0; j < inHeight * inWidth; j++) {
-          expected_hostbuffer[i*inHeight * inWidth + j] = expected[i][j];
-       }
+        for (size_t j = 0; j < inHeight * inWidth; j++) {
+            expected_hostbuffer[i*inHeight * inWidth + j] = expected[i][j];
+        }
     }
     Matrix_t expectedOutput(expected_hostbuffer, expectedShape, MemoryLayout::RowMajor, 0, 0);
 
@@ -523,10 +515,8 @@ bool testBackward1_cudnn() {
     Matrix_t idxBackward;
 
     Architecture::MaxPoolLayerBackward(computedOutput, input, idxBackward, inputActivation, outputActivation,
-                                       (typename Architecture::PoolingDescriptors_t &) poolDescriptors,
-                                       (typename Architecture::PoolingWorkspace_t &) poolWorkspace,
-                                        inHeight, inWidth, frameHeight, frameWidth,
-                                        strideRows, strideCols, 0);
+                                       poolWorkspace, inHeight, inWidth, frameHeight, frameWidth,
+                                       strideRows, strideCols, dropoutProb);
 
     TCudnn<Double_t>::PrintTensor(expectedOutput, "Expected output");
     TCudnn<Double_t>::PrintTensor(computedOutput, "Final output");

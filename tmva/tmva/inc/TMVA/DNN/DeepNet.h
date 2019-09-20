@@ -61,6 +61,7 @@ namespace DNN {
    using namespace CNN;
    using namespace RNN;
    //using namespace DAE;
+   
 
 /** \class TDeepNet
     Generic Deep Neural Network class.
@@ -76,6 +77,10 @@ public:
    using Matrix_t = typename Architecture_t::Matrix_t;
    using Scalar_t = typename Architecture_t::Scalar_t;
   
+   using ActivationOptions_t = typename Architecture_t::ActivationOptions_t;
+   using BatchNormOptions_t  = typename Architecture_t::BatchNormOptions_t;
+   using ConvOptions_t       = typename Architecture_t::ConvolutionOptions_t;
+   using PoolingOptions_t    = typename Architecture_t::PoolingOptions_t;
 
 private:
    bool inline isInteger(Scalar_t x) const { return x == floor(x); }
@@ -122,7 +127,11 @@ public:
     *  of the convolutional layer. */
    TConvLayer<Architecture_t> *AddConvLayer(size_t depth, size_t filterHeight, size_t filterWidth, size_t strideRows,
                                             size_t strideCols, size_t paddingHeight, size_t paddingWidth,
-                                            EActivationFunction f, Scalar_t dropoutProbability = 1.0);
+                                            size_t dilationHeight, size_t dilationWidth, 
+                                            const ActivationOptions_t & activationOptions,
+                                            Scalar_t dropoutProbability = 1.0,
+                                            const ConvOptions_t & convOptions = ConvOptions_t()
+                                            );
 
    /*! Function for adding Convolution Layer in the Deep Neural Network,
     *  when the layer is already created.  */
@@ -134,7 +143,10 @@ public:
     *  layer depth. Based on these parameters, it calculates the width and
     *  height of the pooling layer. */
    TMaxPoolLayer<Architecture_t> *AddMaxPoolLayer(size_t frameHeight, size_t frameWidth, size_t strideRows,
-                                                  size_t strideCols, Scalar_t dropoutProbability = 1.0);
+                                                  size_t strideCols, size_t paddingHeight, size_t paddingWidth,
+                                                  Scalar_t dropoutProbability = 1.0,
+                                                  const PoolingOptions_t & poolingOptions = PoolingOptions_t()
+                                                  );
    /*! Function for adding Max Pooling layer in the Deep Neural Network,
     *  when the layer is already created. */
    void AddMaxPoolLayer(CNN::TMaxPoolLayer<Architecture_t> *maxPoolLayer);
@@ -153,7 +165,9 @@ public:
     *  with a given width, activation function and dropout probability.
     *  Based on the previous layer dimensions, it calculates the input width
     *  of the fully connected layer. */
-   TDenseLayer<Architecture_t> *AddDenseLayer(size_t width, EActivationFunction f, Scalar_t dropoutProbability = 1.0);
+   TDenseLayer<Architecture_t> *AddDenseLayer(size_t width, /*EActivationFunction f,*/
+                                              const ActivationOptions_t & activationOptions,
+                                              Scalar_t dropoutProbability = 1.0);
 
    /*! Function for adding Dense Layer in the Deep Neural Network, when
     *  the layer is already created. */
@@ -412,11 +426,13 @@ auto TDeepNet<Architecture_t, Layer_t>::calculateDimension(int imgDim, int fltDi
 
 //______________________________________________________________________________
 template <typename Architecture_t, typename Layer_t>
-TConvLayer<Architecture_t> *TDeepNet<Architecture_t, Layer_t>::AddConvLayer(size_t depth, size_t filterHeight,
-                                                                            size_t filterWidth, size_t strideRows,
-                                                                            size_t strideCols, size_t paddingHeight,
-                                                                            size_t paddingWidth, EActivationFunction f,
-                                                                            Scalar_t dropoutProbability)
+TConvLayer<Architecture_t> *TDeepNet<Architecture_t, Layer_t>::AddConvLayer(size_t depth, size_t filterHeight, size_t filterWidth,
+                                                                            size_t strideRows, size_t strideCols, 
+                                                                            size_t paddingHeight, size_t paddingWidth, 
+                                                                            size_t dilationHeight, size_t dilationWidth,
+                                                                            const ActivationOptions_t & activOptions,
+                                                                            Scalar_t dropoutProbability,
+                                                                            const ConvOptions_t & convOptions)
 {
    // All variables defining a convolutional layer
    size_t batchSize = this->GetBatchSize();
@@ -439,11 +455,11 @@ TConvLayer<Architecture_t> *TDeepNet<Architecture_t, Layer_t>::AddConvLayer(size
    }
 
 
-
    // Create the conv layer
    TConvLayer<Architecture_t> *convLayer = new TConvLayer<Architecture_t>(
            batchSize, inputDepth, inputHeight, inputWidth, depth, init, filterHeight, filterWidth, strideRows,
-           strideCols, paddingHeight, paddingWidth, dropoutProbability, f, reg, decay);
+           strideCols, paddingHeight, paddingWidth, dilationHeight, dilationWidth, dropoutProbability, 
+           reg, decay, activOptions, convOptions);
 
    fLayers.push_back(convLayer);
    return convLayer;
@@ -460,7 +476,9 @@ void TDeepNet<Architecture_t, Layer_t>::AddConvLayer(TConvLayer<Architecture_t> 
 template <typename Architecture_t, typename Layer_t>
 TMaxPoolLayer<Architecture_t> *TDeepNet<Architecture_t, Layer_t>::AddMaxPoolLayer(size_t frameHeight, size_t frameWidth,
                                                                                   size_t strideRows, size_t strideCols,
-                                                                                  Scalar_t dropoutProbability)
+                                                                                  size_t paddingHeight, size_t paddingWidth,
+                                                                                  Scalar_t dropoutProbability,
+                                                                                  const PoolingOptions_t & poolingOptions)
 {
    size_t batchSize = this->GetBatchSize();
    size_t inputDepth;
@@ -480,7 +498,8 @@ TMaxPoolLayer<Architecture_t> *TDeepNet<Architecture_t, Layer_t>::AddMaxPoolLaye
 
    TMaxPoolLayer<Architecture_t> *maxPoolLayer = new TMaxPoolLayer<Architecture_t>(
       batchSize, inputDepth, inputHeight, inputWidth, frameHeight, frameWidth,
-      strideRows, strideCols, dropoutProbability);
+      strideRows, strideCols, dropoutProbability, paddingHeight, paddingWidth,
+      poolingOptions);
 
    // But this creates a copy or what?
    fLayers.push_back(maxPoolLayer);
@@ -627,7 +646,8 @@ void TDeepNet<Architecture_t, Layer_t>::AddLogisticRegressionLayer(
 
 //______________________________________________________________________________
 template <typename Architecture_t, typename Layer_t>
-TDenseLayer<Architecture_t> *TDeepNet<Architecture_t, Layer_t>::AddDenseLayer(size_t width, EActivationFunction f,
+TDenseLayer<Architecture_t> *TDeepNet<Architecture_t, Layer_t>::AddDenseLayer(size_t width, /*EActivationFunction f,*/
+                                                                              const ActivationOptions_t & activationOptions,
                                                                               Scalar_t dropoutProbability)
 {
    size_t batchSize = this->GetBatchSize();
@@ -644,7 +664,7 @@ TDenseLayer<Architecture_t> *TDeepNet<Architecture_t, Layer_t>::AddDenseLayer(si
    }
 
    TDenseLayer<Architecture_t> *denseLayer =
-      new TDenseLayer<Architecture_t>(batchSize, inputWidth, width, init, dropoutProbability, f, reg, decay);
+      new TDenseLayer<Architecture_t>(batchSize, inputWidth, width, init, dropoutProbability, /*f,*/ reg, decay, activationOptions);
 
    fLayers.push_back(denseLayer);
 

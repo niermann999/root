@@ -37,6 +37,7 @@
 #include "TMVA/Types.h"
 #include "TMVA/DNN/TensorDataLoader.h"
 #include "TMVA/DNN/Functions.h"
+#include "TMVA/DNN/CNN/ContextHandles.h"
 #include "TMVA/DNN/DLMinimizers.h"
 #include "TMVA/DNN/SGD.h"
 #include "TMVA/DNN/Adam.h"
@@ -527,7 +528,7 @@ void MethodDL::ParseBatchLayout()
 template <typename Architecture_t, typename Layer_t>
 void MethodDL::CreateDeepNet(DNN::TDeepNet<Architecture_t, Layer_t> &deepNet,
                              std::vector<DNN::TDeepNet<Architecture_t, Layer_t>> &nets)
-{
+{  
    // Layer specification, layer details
    const TString layerDelimiter(",");
    const TString subDelimiter("|");
@@ -583,7 +584,11 @@ void MethodDL::ParseDenseLayer(DNN::TDeepNet<Architecture_t, Layer_t> &deepNet,
                                std::vector<DNN::TDeepNet<Architecture_t, Layer_t>> & /*nets*/, TString layerString,
                                TString delim)
 {
+   using Scalar_t = typename Architecture_t::Scalar_t;
+   using ActivationOptions_t = typename Architecture_t::ActivationOptions_t;
+
    int width = 0;
+   Scalar_t dropoutProb = 1.0;
    EActivationFunction activationFunction = EActivationFunction::kTanh;
 
    // this return number of input variables for the method
@@ -637,14 +642,18 @@ void MethodDL::ParseDenseLayer(DNN::TDeepNet<Architecture_t, Layer_t> &deepNet,
    }
    // avoid zero width. assume is 1
    if (width == 0) width = 1; 
+   
+   const ActivationOptions_t & activOptions = ActivationOptions_t(activationFunction);
 
    // Add the dense layer, initialize the weights and biases and copy
-   TDenseLayer<Architecture_t> *denseLayer = deepNet.AddDenseLayer(width, activationFunction);
+   TDenseLayer<Architecture_t> *denseLayer = deepNet.AddDenseLayer(width, activOptions, dropoutProb);
    denseLayer->Initialize();
+   
+   const ActivationOptionsImpl_t & activOptionsImpl = ActivationOptionsImpl_t(activationFunction);
+   ScalarImpl_t dropoutProbImpl = 1.0;
 
    // add same layer to fNet
-   if (fBuildNet) fNet->AddDenseLayer(width, activationFunction);
-
+   if (fBuildNet) fNet->AddDenseLayer(width, activOptionsImpl, dropoutProbImpl);
    //TDenseLayer<Architecture_t> *copyDenseLayer = new TDenseLayer<Architecture_t>(*denseLayer);
 
    // add the copy to all slave nets
@@ -663,6 +672,10 @@ void MethodDL::ParseConvLayer(DNN::TDeepNet<Architecture_t, Layer_t> &deepNet,
                               std::vector<DNN::TDeepNet<Architecture_t, Layer_t>> & /*nets*/, TString layerString,
                               TString delim)
 {
+   using Scalar_t = typename Architecture_t::Scalar_t;
+   using ActivationOptions_t  = typename Architecture_t::ActivationOptions_t;
+   using ConvolutionOptions_t = typename Architecture_t::ConvolutionOptions_t;
+
    int depth = 0;
    int fltHeight = 0;
    int fltWidth = 0;
@@ -670,6 +683,9 @@ void MethodDL::ParseConvLayer(DNN::TDeepNet<Architecture_t, Layer_t> &deepNet,
    int strideCols = 0;
    int zeroPadHeight = 0;
    int zeroPadWidth = 0;
+   int dilHeight = 0;
+   int dilWidth = 0;
+   Scalar_t dropoutProb = 1.0;
    EActivationFunction activationFunction = EActivationFunction::kTanh;
 
    // Split layer details
@@ -738,14 +754,32 @@ void MethodDL::ParseConvLayer(DNN::TDeepNet<Architecture_t, Layer_t> &deepNet,
       ++idxToken;
    }
 
+   const ActivationOptions_t & activOptions = ActivationOptions_t(activationFunction); // FIXME: tmp options struct is lost when copying layers
+   TConvLayer<Architecture_t> *convLayer;
+   if (fArchitectureString == "CUDNN") {
+      const ConvolutionOptions_t & convOptions = ConvolutionOptions_t();
+      convLayer = deepNet.AddConvLayer(depth, fltHeight, fltWidth, strideRows, strideCols,
+                                                                zeroPadHeight, zeroPadWidth, dilHeight, dilWidth,
+                                                                activOptions, dropoutProb, convOptions);
+   }
+   else {
+      convLayer = deepNet.AddConvLayer(depth, fltHeight, fltWidth, strideRows, strideCols,
+                                                                zeroPadHeight, zeroPadWidth, dilHeight, dilWidth,
+                                                                activOptions);
+   }
+
    // Add the convolutional layer, initialize the weights and biases and copy
-   TConvLayer<Architecture_t> *convLayer = deepNet.AddConvLayer(depth, fltHeight, fltWidth, strideRows, strideCols,
-                                                                zeroPadHeight, zeroPadWidth, activationFunction);
+   /*TConvLayer<Architecture_t> *convLayer = deepNet.AddConvLayer(depth, fltHeight, fltWidth, strideRows, strideCols,
+                                                                zeroPadHeight, zeroPadWidth, dilHeight, dilWidth,
+                                                                activOptions, dropoutProb, convOptions);*/
    convLayer->Initialize();
 
    // Add same layer to fNet
+   const ActivationOptionsImpl_t & activOptionsImpl = ActivationOptionsImpl_t(activationFunction);
+   const ConvolutionOptionsImpl_t & convOptionsImpl = ConvolutionOptionsImpl_t();
+   ScalarImpl_t dropoutProbImpl = 1.0;
    if (fBuildNet) fNet->AddConvLayer(depth, fltHeight, fltWidth, strideRows, strideCols,
-                      zeroPadHeight, zeroPadWidth, activationFunction);
+                      zeroPadHeight, zeroPadWidth, dilHeight, dilWidth, activOptionsImpl, dropoutProbImpl, convOptionsImpl);
 
    //TConvLayer<Architecture_t> *copyConvLayer = new TConvLayer<Architecture_t>(*convLayer);
 
@@ -762,11 +796,16 @@ void MethodDL::ParseMaxPoolLayer(DNN::TDeepNet<Architecture_t, Layer_t> &deepNet
                                  std::vector<DNN::TDeepNet<Architecture_t, Layer_t>> & /*nets*/, TString layerString,
                                  TString delim)
 {
+   using Scalar_t = typename Architecture_t::Scalar_t;
+   using PoolingOptions_t  = typename Architecture_t::PoolingOptions_t;
 
    int filterHeight = 0;
    int filterWidth = 0;
    int strideRows = 0;
    int strideCols = 0;
+   int padHeight = 0;
+   int padWidth = 0;
+   Scalar_t dropoutProb = 1.0;
 
    // Split layer details
    TObjArray *subStrings = layerString.Tokenize(delim);
@@ -800,12 +839,17 @@ void MethodDL::ParseMaxPoolLayer(DNN::TDeepNet<Architecture_t, Layer_t> &deepNet
       ++idxToken;
    }
 
+   const PoolingOptions_t & poolOptions = PoolingOptions_t();
    // Add the Max pooling layer
    // TMaxPoolLayer<Architecture_t> *maxPoolLayer =
-   deepNet.AddMaxPoolLayer(filterHeight, filterWidth, strideRows, strideCols);
+   deepNet.AddMaxPoolLayer(filterHeight, filterWidth, strideRows, strideCols, 
+                           padHeight, padWidth, dropoutProb, poolOptions);
 
    // Add the same layer to fNet
-   if (fBuildNet) fNet->AddMaxPoolLayer(filterHeight, filterWidth, strideRows, strideCols);
+   const PoolingOptionsImpl_t & poolOptionsImpl = PoolingOptionsImpl_t();
+   ScalarImpl_t dropoutProbImpl = 1.0;
+   if (fBuildNet) fNet->AddMaxPoolLayer(filterHeight, filterWidth, strideRows, strideCols, 
+                                        padHeight, padWidth, dropoutProbImpl, poolOptionsImpl);
 
 
    //TMaxPoolLayer<Architecture_t> *copyMaxPoolLayer = new TMaxPoolLayer<Architecture_t>(*maxPoolLayer);
@@ -2026,6 +2070,8 @@ void MethodDL::ReadWeightsFromXML(void * rootXML)
    gTools().ReadAttr(netXML, "OutputFunction", outputFunctionChar);
    double weightDecay;
    gTools().ReadAttr(netXML, "WeightDecay", weightDecay);
+   double dropoutProbability = 1.0;
+   //gTools().ReadAttr(netXML, "DropoutProbability", dropoutProbability);
 
    // create the net
 
@@ -2062,15 +2108,17 @@ void MethodDL::ReadWeightsFromXML(void * rootXML)
 
          // read width and activation function and then we can create the layer
          size_t width = 0;
+         ScalarImpl_t dropoutProb = dropoutProbability;
          gTools().ReadAttr(layerXML, "Width", width);
+         //gTools().ReadAttr(layerXML, "DropoutProbability", dropoutProb);
 
          // Read activation function.
          TString funcString; 
          gTools().ReadAttr(layerXML, "ActivationFunction", funcString);
          EActivationFunction func = static_cast<EActivationFunction>(funcString.Atoi());
+         const ActivationOptionsImpl_t & activOptionsImpl = ActivationOptionsImpl_t(func);
 
-
-         fNet->AddDenseLayer(width, func, 0.0); // no need to pass dropout probability
+         fNet->AddDenseLayer(width, activOptionsImpl, dropoutProb);
 
       }
       // Convolutional Layer
@@ -2079,24 +2127,30 @@ void MethodDL::ReadWeightsFromXML(void * rootXML)
          // read width and activation function and then we can create the layer
          size_t depth = 0;
          gTools().ReadAttr(layerXML, "Depth", depth);
-         size_t fltHeight, fltWidth = 0;
-         size_t strideRows, strideCols = 0;
-         size_t padHeight, padWidth = 0;
+         size_t fltHeight = 0, fltWidth = 0;
+         size_t strideRows = 0, strideCols = 0;
+         size_t padHeight = 0, padWidth = 0;
+         size_t dilHeight = 1, dilWidth = 1;
+         ScalarImpl_t dropoutProb = dropoutProbability;
          gTools().ReadAttr(layerXML, "FilterHeight", fltHeight);
          gTools().ReadAttr(layerXML, "FilterWidth", fltWidth);
          gTools().ReadAttr(layerXML, "StrideRows", strideRows);
          gTools().ReadAttr(layerXML, "StrideCols", strideCols);
          gTools().ReadAttr(layerXML, "PaddingHeight", padHeight);
          gTools().ReadAttr(layerXML, "PaddingWidth", padWidth);
+         //gTools().ReadAttr(layerXML, "DilationHeight", dilHeight);
+         //gTools().ReadAttr(layerXML, "DilationWidth", dilWidth);
+         //gTools().ReadAttr(layerXML, "DropoutProbability", dropoutProb);
 
          // Read activation function.
          TString funcString; 
          gTools().ReadAttr(layerXML, "ActivationFunction", funcString);
          EActivationFunction actFunction = static_cast<EActivationFunction>(funcString.Atoi());
-
+         const ActivationOptionsImpl_t & activOptionsImpl = ActivationOptionsImpl_t(actFunction);
+         const ConvolutionOptionsImpl_t & convOptionsImpl = ConvolutionOptionsImpl_t();
 
          fNet->AddConvLayer(depth, fltHeight, fltWidth, strideRows, strideCols,
-                            padHeight, padWidth, actFunction);
+                            padHeight, padWidth, dilHeight, dilWidth, activOptionsImpl, dropoutProb, convOptionsImpl);
 
       }
 
@@ -2104,14 +2158,21 @@ void MethodDL::ReadWeightsFromXML(void * rootXML)
       else if (layerName == "MaxPoolLayer") {
 
          // read maxpool layer info
-         size_t filterHeight, filterWidth = 0;
-         size_t strideRows, strideCols = 0;
+         size_t filterHeight = 0, filterWidth = 0;
+         size_t strideRows = 0 , strideCols = 0;
+         size_t padHeight = 0, padWidth = 0;
+         ScalarImpl_t dropoutProb = dropoutProbability;
          gTools().ReadAttr(layerXML, "FilterHeight", filterHeight);
          gTools().ReadAttr(layerXML, "FilterWidth", filterWidth);
          gTools().ReadAttr(layerXML, "StrideRows", strideRows);
          gTools().ReadAttr(layerXML, "StrideCols", strideCols);
+         //gTools().ReadAttr(layerXML, "PaddingHeight", padHeight);
+         //gTools().ReadAttr(layerXML, "PaddingWidth", padWidth);
+         //gTools().ReadAttr(layerXML, "DropoutProbability", dropoutProb);
 
-         fNet->AddMaxPoolLayer(filterHeight, filterWidth, strideRows, strideCols);
+         const PoolingOptionsImpl_t & poolOptionsImpl = PoolingOptionsImpl_t();
+
+         fNet->AddMaxPoolLayer(filterHeight, filterWidth, strideRows, strideCols, padHeight, padWidth, dropoutProb, poolOptionsImpl);
       }
       else if (layerName == "ReshapeLayer") {
 
@@ -2121,7 +2182,7 @@ void MethodDL::ReadWeightsFromXML(void * rootXML)
          gTools().ReadAttr(layerXML, "Height", height);
          gTools().ReadAttr(layerXML, "Width", width);
          int flattening = 0;
-         gTools().ReadAttr(layerXML, "Flattening",flattening );
+         gTools().ReadAttr(layerXML, "Flattening", flattening);
 
          fNet->AddReshapeLayer(depth, height, width, flattening);
 
@@ -2141,7 +2202,7 @@ void MethodDL::ReadWeightsFromXML(void * rootXML)
       }
        // BatchNorm Layer
       else if (layerName == "BatchNormLayer") {   
-         // use some dammy value which will be overwrittem in BatchNormLayer::ReadWeightsFromXML
+         // use some dummy value which will be overwrittem in BatchNormLayer::ReadWeightsFromXML
          fNet->AddBatchNormLayer(0., 0.0);
       }
 

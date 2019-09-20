@@ -75,6 +75,9 @@ auto testBackpropagationWeightsLinear(typename Architecture::Scalar_t dx)
    using Scalar_t = typename Architecture::Scalar_t;
    using Matrix_t = typename Architecture::Matrix_t;
    using Tensor_t = typename Architecture::Tensor_t;
+
+   using ActivationOptions_t = typename Architecture::ActivationOptions_t;
+
    using Net_t = TDeepNet<Architecture>;
    // using FCLayer_t  = TDenseLayer<Architecture>;
 
@@ -82,7 +85,8 @@ auto testBackpropagationWeightsLinear(typename Architecture::Scalar_t dx)
    Net_t net(tbatchSize, timeSteps, tbatchSize, inputSize, 0, 0, 0, ELossFunction::kMeanSquaredError,
              EInitialization::kGauss);
    // FCLayer_t* l1 = net.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
-   net.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
+   const ActivationOptions_t & activOptions = ActivationOptions_t(EActivationFunction::kIdentity);
+   net.AddDenseLayer(outputSize, activOptions);
 
    // Random training data.
    Tensor_t X( timeSteps, tbatchSize, inputSize); // T x B x D
@@ -147,6 +151,9 @@ auto testBackpropagationL1Regularization(typename Architecture::Scalar_t dx)
    using Scalar_t = typename Architecture::Scalar_t;
    using Matrix_t = typename Architecture::Matrix_t;
    using Tensor_t = typename Architecture::Tensor_t;
+
+   using ActivationOptions_t = typename Architecture::ActivationOptions_t;
+
    using Net_t    = TDeepNet<Architecture>;
    // using FCLayer_t  = TDenseLayer<Architecture>;
 
@@ -154,7 +161,9 @@ auto testBackpropagationL1Regularization(typename Architecture::Scalar_t dx)
    Net_t net(tbatchSize, timeSteps, tbatchSize, inputSize, 0, 0, 0, ELossFunction::kMeanSquaredError,
              EInitialization::kGauss);
    // FCLayer_t* l1 = net.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
-   net.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
+   const ActivationOptions_t & activOptions = ActivationOptions_t(EActivationFunction::kIdentity);
+   net.AddDenseLayer(outputSize, activOptions);
+
    // Random training data.
    Tensor_t X(timeSteps, tbatchSize, inputSize); // T x B x D
    Matrix_t Y(tbatchSize, outputSize), weights(tbatchSize, 1);
@@ -224,13 +233,17 @@ auto testBackpropagationL2Regularization(typename Architecture::Scalar_t dx)
    using Scalar_t = typename Architecture::Scalar_t;
    using Matrix_t = typename Architecture::Matrix_t;
    using Tensor_t = typename Architecture::Tensor_t;
+
+   using ActivationOptions_t = typename Architecture::ActivationOptions_t;
+
    using Net_t    = TDeepNet<Architecture>;
    // using FCLayer_t  = TDenseLayer<Architecture>;
 
    Net_t net(tbatchSize, timeSteps, tbatchSize, inputSize, 0, 0, 0, ELossFunction::kMeanSquaredError,
              EInitialization::kGauss);
    // FCLayer_t* l1 = net.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
-   net.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
+   const ActivationOptions_t & activOptions = ActivationOptions_t(EActivationFunction::kIdentity);
+   net.AddDenseLayer(outputSize, activOptions);
 
    // Random training data.
    Tensor_t X(timeSteps, tbatchSize, inputSize); // T x B x D
@@ -299,12 +312,16 @@ auto testBackpropagationBiasesLinear(typename Architecture::Scalar_t dx)
    using Scalar_t   = typename Architecture::Scalar_t;
    using Matrix_t = typename Architecture::Matrix_t;
    using Tensor_t = typename Architecture::Tensor_t;
+
+   using ActivationOptions_t = typename Architecture::ActivationOptions_t;
+
    // using FCLayer_t  = TDenseLayer<Architecture>;
 
    Net_t net(tbatchSize, timeSteps, tbatchSize, inputSize, 0, 0, 0, ELossFunction::kMeanSquaredError,
              EInitialization::kGauss);
    // FCLayer_t* l1 = net.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
-   net.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
+   const ActivationOptions_t & activOptions = ActivationOptions_t(EActivationFunction::kIdentity);
+   net.AddDenseLayer(outputSize, activOptions);
 
    // Random training data.
    Tensor_t X(timeSteps, tbatchSize, inputSize); // T x B x D

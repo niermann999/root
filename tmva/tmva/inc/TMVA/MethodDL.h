@@ -96,7 +96,12 @@ private:
    using TensorImpl_t =  typename ArchitectureImpl_t::Tensor_t;
    using ScalarImpl_t =  typename ArchitectureImpl_t::Scalar_t;
  
+   using ActivationOptionsImpl_t  = typename ArchitectureImpl_t::ActivationOptions_t;
+   using BatchNormOptionsImpl_t   = typename ArchitectureImpl_t::BatchNormOptions_t;
+   using ConvolutionOptionsImpl_t = typename ArchitectureImpl_t::ConvolutionOptions_t;
+   using PoolingOptionsImpl_t     = typename ArchitectureImpl_t::PoolingOptions_t;
 
+   
    /*! The option handling methods */
    void DeclareOptions();
    void ProcessOptions();

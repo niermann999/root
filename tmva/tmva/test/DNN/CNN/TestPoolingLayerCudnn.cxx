@@ -54,10 +54,11 @@ int main()
 
     std::cout << "Test Back-propagation 1: " << std::endl;
     if (!testBackward1_cudnn<TCudnn<Scalar_t>>()) {
-        std::cerr << "ERROR - Back-propagation failed " << std::endl;
+        std::cerr << "ERROR - Back-propagation 1 failed " << std::endl;
         return -1;
     }
 
+    std::cout << "Warning: Back-propagation 2 test is not implemented!" << std::endl;
     // FIXME: Prepare forward pass for this test
     /*std::cout << "Test Back-propagation 2: " << std::endl;
     if (!testBackward2<TCpu<Scalar_t>>()) {

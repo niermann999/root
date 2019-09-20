@@ -67,6 +67,9 @@ auto testBackpropagationWeights(typename Architecture::Scalar_t dx_eps)
    using Scalar_t = typename Architecture::Scalar_t;
    using Matrix_t = typename Architecture::Matrix_t;
    using Tensor_t = typename Architecture::Tensor_t;
+
+   using ActivationOptions_t  = typename Architecture::ActivationOptions_t;
+
    using Net_t = TDeepNet<Architecture>;
    // using FCLayer_t  = TDenseLayer<Architecture>;
 
@@ -74,12 +77,13 @@ auto testBackpropagationWeights(typename Architecture::Scalar_t dx_eps)
    Net_t net(tbatchSize, 1, tbatchSize, inputSize, 0, 0, 0, ELossFunction::kMeanSquaredError,
              EInitialization::kGauss);
    // FCLayer_t* l1 = net.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
-   net.AddDenseLayer(outputSize, EActivationFunction::kIdentity);
+   const ActivationOptions_t & activOptions = ActivationOptions_t(EActivationFunction::kIdentity);
+   net.AddDenseLayer(outputSize, activOptions);
 
    auto & layers = net.GetLayers();
    auto bnlayer = new TBatchNormLayer<Architecture>(tbatchSize, outputSize);
    layers.push_back( bnlayer);
-   net.AddDenseLayer(1, EActivationFunction::kIdentity);
+   net.AddDenseLayer(1, activOptions);
 
     
     //net.AddBatchNormLayer()

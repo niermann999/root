@@ -26,7 +26,9 @@ namespace DNN
 
 //______________________________________________________________________________
 template<typename AFloat>
-void TCudnn<AFloat>::ActivationFunctionForward(Tensor_t & X, EActivationFunction activFunct, const ActivationDescriptor_t activationDescr,  const double coef, const AFloat alpha, const AFloat beta)
+void TCudnn<AFloat>::ActivationFunctionForward(Tensor_t & X,// EActivationFunction activFunct,
+                                               const ActivationWorkspace_t & activationWorkspace,
+                                               const double /*coef*/, const AFloat alpha, const AFloat beta)
 {
 /*
    cudnnActivationMode_t activationMode;
@@ -48,10 +50,10 @@ void TCudnn<AFloat>::ActivationFunctionForward(Tensor_t & X, EActivationFunction
 */
   
    // Nothing to do for identity function
-   if (activFunct == EActivationFunction::kIdentity) return;
+   if (activationWorkspace.isIdentity) return;
 
    CUDNNCHECK(cudnnActivationForward(X.GetCudnnHandle(),
-                                     activationDescr,
+                                     activationWorkspace.activationFnctDescr,
                                      &alpha,
                                      X.GetTensorDescriptor(),
                                      X.GetDataPointer(),
@@ -64,12 +66,12 @@ void TCudnn<AFloat>::ActivationFunctionForward(Tensor_t & X, EActivationFunction
 template<typename AFloat>
 void TCudnn<AFloat>::ActivationFunctionBackward(Tensor_t & dX, const Tensor_t & Y,
                                                 const Tensor_t & dY, const Tensor_t & X, 
-                                                EActivationFunction activFunct ,
-                                                const ActivationDescriptor_t activationDescr, 
+                                                //EActivationFunction activFunct,
+                                                const ActivationWorkspace_t & activationWorkspace, 
                                                 const AFloat alpha, const AFloat beta)
 {
    // For identity function output dX is = dY
-   if (activFunct == EActivationFunction::kIdentity) { 
+   if (activationWorkspace.isIdentity) { 
       Copy(dX,dY);
       return;
    }
@@ -77,7 +79,7 @@ void TCudnn<AFloat>::ActivationFunctionBackward(Tensor_t & dX, const Tensor_t & 
    //Y.Print();
    // The activation descriptor is set in the forward pass                                        
    CUDNNCHECK(cudnnActivationBackward(X.GetCudnnHandle(),
-                                      activationDescr,
+                                      activationWorkspace.activationFnctDescr,
                                       &alpha,
                                       Y.GetTensorDescriptor(),
                                       Y.GetDataPointer(),

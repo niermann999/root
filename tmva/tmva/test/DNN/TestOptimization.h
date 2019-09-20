@@ -65,7 +65,10 @@ auto testOptimization(typename Architecture_t::Scalar_t momentum, EOptimizer opt
 {
    //using Matrix_t = typename Architecture_t::Matrix_t;
    using Tensor_t = typename Architecture_t::Tensor_t;
-   using Scalar_t = typename Architecture_t::Scalar_t; 
+   using Scalar_t = typename Architecture_t::Scalar_t;
+
+   using ActivationOptions_t  = typename Architecture_t::ActivationOptions_t;
+
    using Layer_t = VGeneralLayer<Architecture_t>;
    using DeepNet_t = TDeepNet<Architecture_t, Layer_t>;
    using DataLoader_t = TTensorDataLoader<TensorInput, Architecture_t>;
@@ -125,9 +128,10 @@ auto testOptimization(typename Architecture_t::Scalar_t momentum, EOptimizer opt
 
    DeepNet_t deepNet(batchSize, inputDepth, inputHeight, inputWidth, batchDepth, batchHeight, batchWidth,
                      ELossFunction::kMeanSquaredError, EInitialization::kGauss, ERegularization::kNone, 0.0, true);
-   deepNet.AddDenseLayer(32, EActivationFunction::kIdentity);
-   deepNet.AddDenseLayer(32, EActivationFunction::kIdentity);
-   deepNet.AddDenseLayer(1, EActivationFunction::kIdentity);
+   const ActivationOptions_t & activOptions = ActivationOptions_t(EActivationFunction::kIdentity);
+   deepNet.AddDenseLayer(32, activOptions);
+   deepNet.AddDenseLayer(32, activOptions);
+   deepNet.AddDenseLayer(1, activOptions);
    deepNet.Initialize();
 
    if (debug) {
